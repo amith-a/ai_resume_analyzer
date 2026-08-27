@@ -1,17 +1,11 @@
 import { ChatOllama } from "@langchain/ollama";
+import { env } from "../config/env.js";
 
 export async function generateLangChainText(prompt: string): Promise<string> {
-  const ollamaHost = process.env.OLLAMA_HOST;
-  if (!ollamaHost) {
-    throw new Error("OLLAMA_HOST environment variable is not set");
-  }
-
-  const model = process.env.OLLAMA_MODEL || "qwen3:4b";
-
   const llm = new ChatOllama({
-    model,
+    model: env.OLLAMA_MODEL,
     temperature: 0,
-    baseUrl: ollamaHost,
+    baseUrl: env.OLLAMA_HOST,
   });
 
   const start = performance.now();

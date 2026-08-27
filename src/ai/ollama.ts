@@ -1,3 +1,5 @@
+import { env } from "../config/env.js";
+
 interface OllamaGenerateResponse {
   response: string;
   model: string;
@@ -5,22 +7,15 @@ interface OllamaGenerateResponse {
 }
 
 export async function generateText(prompt: string): Promise<string> {
-  const ollamaHost = process.env.OLLAMA_HOST;
-  if (!ollamaHost) {
-    throw new Error("OLLAMA_HOST environment variable is not set");
-  }
-
-  const model = process.env.OLLAMA_MODEL || "qwen3:4b";
-
   const start = performance.now();
   try {
-    const response = await fetch(`${ollamaHost}/api/generate`, {
+    const response = await fetch(`${env.OLLAMA_HOST}/api/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model,
+        model: env.OLLAMA_MODEL,
         prompt,
         stream: false,
       }),
