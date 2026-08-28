@@ -260,9 +260,9 @@ application logic
 
 # Phase 6 — Resume File and Text Processing
 
-## Objective
+## Completed
 
-Build the resume ingestion pipeline.
+build the resume ingestion pipeline.
 
 Flow:
 
@@ -285,6 +285,14 @@ Structured analysis
 - Keep extracted text separate from raw file handling.
 
 The LLM should receive extracted text, not arbitrary PDF bytes.
+
+- In-memory upload handling with 5MB limit (`multer`)
+- Buffer binary magic-bytes inspection (`file-type`)
+- In-memory PDF extraction (`unpdf`) & DOCX extraction (`mammoth`)
+- Deterministic text normalization utility (`normalizeResumeText`)
+- Unit test suite (`tests/text-normalizer.test.ts`)
+- Preserved error boundaries (400, 413, 415, 422)
+
 
 ---
 
@@ -679,18 +687,18 @@ Final target:
 
 We are currently at:
 
-Phase 5 — Prompting and Structured Output ✅
+Phase 6 — Resume File and Text Processing ✅
 
 The next implementation task is:
 
-Phase 6 — Resume File and Text Processing
+Phase 7 — Resume Analysis
 
 First task:
 
-1. Build safe file upload handling for resume files (PDF/text).
-2. Validate file types, enforce file-size limits, and safe temp file handling.
-3. Extract clean text from resumes and normalize text for LLM consumption.
-4. Keep file processing strictly separate from LLM analysis.
+1. Connect the normalized resume text pipeline to the structured analysis engine.
+2. Analyze candidate details (summary, skills, experience, education) using the schema.
+3. Validate and return the structured candidate profile.
+
 
 
 ---
