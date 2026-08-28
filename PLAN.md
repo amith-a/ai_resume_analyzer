@@ -169,7 +169,7 @@ Do not add unnecessary SDKs merely to call Ollama.
 
 # Phase 4 — LangChain Fundamentals
 
-## Objective
+## Completed
 
 Introduce LangChain only after the direct Ollama integration is understood.
 
@@ -215,9 +215,17 @@ Every abstraction should have a clear reason.
 
 # Phase 5 — Prompting and Structured Output
 
-## Objective
+## Completed
 
 Move from free-form LLM responses to reliable application data.
+
+- Single source-of-truth Zod schema (`CandidateProfileSchema`)
+- Prompt separation using `ChatPromptTemplate`
+- LangChain `ChatOllama` structured output (`.withStructuredOutput`)
+- Defensive runtime validation with Zod `safeParse`
+- Explicit error boundaries (400, 422, 502)
+- Tested and verified via `POST /ai/structured/test`
+
 
 Example:
 
@@ -671,23 +679,19 @@ Final target:
 
 We are currently at:
 
-Phase 3 — Direct LLM Integration ✅
+Phase 5 — Prompting and Structured Output ✅
 
 The next implementation task is:
 
-Phase 4 — LangChain Fundamentals
+Phase 6 — Resume File and Text Processing
 
 First task:
 
-1. Install the required LangChain packages.
-2. Create the smallest possible LangChain → Ollama integration.
-3. Keep the existing native `fetch()` implementation for comparison.
-4. Test both approaches.
-5. Understand exactly what LangChain adds.
-6. Do not implement RAG, embeddings, agents, or resume analysis yet.
+1. Build safe file upload handling for resume files (PDF/text).
+2. Validate file types, enforce file-size limits, and safe temp file handling.
+3. Extract clean text from resumes and normalize text for LLM consumption.
+4. Keep file processing strictly separate from LLM analysis.
 
-After LangChain fundamentals are verified, continue sequentially through the
-phases above.
 
 ---
 
