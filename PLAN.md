@@ -298,7 +298,7 @@ The LLM should receive extracted text, not arbitrary PDF bytes.
 
 # Phase 7 — Resume Analysis
 
-## Objective
+## Completed
 
 Analyze a resume and produce structured information.
 
@@ -329,6 +329,14 @@ Structured output
 Validation
   ↓
 Application data
+
+- Canonical `ResumeAnalysisSchema` and sub-schemas with inferred TypeScript types (`src/ai/schemas/resume-analysis.schema.ts`)
+- Isolated `resumeAnalysisPrompt` template with fact-grounding, date nullability, and injection boundaries (`src/ai/prompts/resume-analysis.prompt.ts`)
+- `analyzeResume()` service connecting `ChatOllama` structured output with 90s timeout and defensive `safeParse` validation (`src/services/resume-analyzer.service.ts`)
+- `POST /resumes/analyze` endpoint integrated into `src/routes/resume.routes.ts` with standardized 400, 413, 415, 422, 502 error mapping
+- 5 comprehensive test suites with LLM isolation passing all 41 unit & integration tests
+- Verified end-to-end live inference against Ollama (`qwen3:4b`)
+
 
 ---
 
@@ -687,17 +695,19 @@ Final target:
 
 We are currently at:
 
-Phase 6 — Resume File and Text Processing ✅
+Phase 7 — Resume Analysis ✅
 
 The next implementation task is:
 
-Phase 7 — Resume Analysis
+Phase 8 — Job Description Comparison
 
 First task:
 
-1. Connect the normalized resume text pipeline to the structured analysis engine.
-2. Analyze candidate details (summary, skills, experience, education) using the schema.
-3. Validate and return the structured candidate profile.
+1. Define comparison schema (match score, matching skills, missing skills, experience match, evaluation reasoning).
+2. Create isolated job comparison prompt template.
+3. Implement job comparison service comparing resume against a provided job description.
+4. Integrate API endpoint (POST /resumes/compare or POST /resumes/match).
+
 
 
 
