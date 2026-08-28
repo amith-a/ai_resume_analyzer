@@ -1,15 +1,6 @@
 import { extractText } from "unpdf";
 import mammoth from "mammoth";
-
-export class DocumentExtractionError extends Error {
-  constructor(message: string, cause?: unknown) {
-    super(message);
-    this.name = "DocumentExtractionError";
-    if (cause) {
-      this.cause = cause;
-    }
-  }
-}
+import { DocumentExtractionError } from "../errors/index.js";
 
 export async function extractTextFromDocument(
   buffer: Buffer,

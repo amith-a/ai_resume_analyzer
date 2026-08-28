@@ -6,7 +6,7 @@ import {
   ResumeAnalysis,
   ResumeAnalysisSchema,
 } from "../ai/schemas/resume-analysis.schema.js";
-import { SchemaValidationError, UpstreamAIError } from "../ai/errors.js";
+import { SchemaValidationError, UpstreamAIError } from "../errors/index.js";
 
 /**
  * Analyzes normalized resume text using the LLM and validates

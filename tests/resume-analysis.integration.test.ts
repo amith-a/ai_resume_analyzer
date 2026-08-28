@@ -6,7 +6,7 @@ import {
   setAnalyzeResumeHandler,
   resetAnalyzeResumeHandler,
 } from "../src/services/resume-analyzer.service.js";
-import { UpstreamAIError, SchemaValidationError } from "../src/ai/errors.js";
+import { UpstreamAIError, SchemaValidationError } from "../src/errors/index.js";
 import type { ResumeAnalysis } from "../src/ai/schemas/resume-analysis.schema.js";
 
 const mockValidAnalysis: ResumeAnalysis = {
