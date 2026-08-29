@@ -11,17 +11,13 @@ const server = app.listen(env.PORT, () => {
 const gracefulShutdown = async (signal: string) => {
   console.log(`Received ${signal}. Starting graceful shutdown...`);
 
-  if (server.closeAllConnections) {
-    server.closeAllConnections();
-  }
-
   server.close(async () => {
     console.log("HTTP server closed.");
     try {
       await pool.end();
       console.log("PostgreSQL connection pool drained.");
       process.exit(0);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error closing PostgreSQL pool:", err);
       process.exit(1);
     }

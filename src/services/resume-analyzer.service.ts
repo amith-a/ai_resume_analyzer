@@ -16,11 +16,15 @@ import { SchemaValidationError, UpstreamAIError } from "../errors/index.js";
  * @param modelOverride - Optional test seam to inject a mock structured runnable.
  * @returns Promise<ResumeAnalysis> - Type-safe, validated resume analysis object.
  */
-async function defaultAnalyzeResume(
+export async function analyzeResume(
   resumeText: string,
-  modelOverride?: Runnable<any, any>
+  modelOverride?: Runnable<any, any>,
 ): Promise<ResumeAnalysis> {
-  if (!resumeText || typeof resumeText !== "string" || resumeText.trim().length === 0) {
+  if (
+    !resumeText ||
+    typeof resumeText !== "string" ||
+    resumeText.trim().length === 0
+  ) {
     throw new TypeError("Resume text must be a non-empty string");
   }
 
@@ -36,63 +40,48 @@ async function defaultAnalyzeResume(
   const pipeline = resumeAnalysisPrompt.pipe(structuredModel);
 
   const start = performance.now();
-  let structuredResult: unknown;
 
   try {
     const signal = AbortSignal.timeout(90_000);
-    structuredResult = await pipeline.invoke(
+
+    const structuredResult = await pipeline.invoke(
       { resumeText: resumeText.trim() },
-      { signal }
+      { signal },
     );
-  } catch (error) {
+
     const duration = performance.now() - start;
+
+    console.log(
+      `Resume analysis LLM inference completed in ${duration.toFixed(0)}ms`,
+    );
+
+    const parseResult = ResumeAnalysisSchema.safeParse(structuredResult);
+
+    if (!parseResult.success) {
+      console.error(
+        "Resume analysis output failed defensive schema validation:",
+        parseResult.error.format(),
+      );
+
+      throw new SchemaValidationError(
+        "Model output failed defensive schema validation",
+        parseResult.error.issues,
+      );
+    }
+
+    return parseResult.data;
+  } catch (error: unknown) {
+    const duration = performance.now() - start;
+
+    if (error instanceof SchemaValidationError) {
+      throw error;
+    }
+
     console.error(
       `Resume analysis LLM invocation failed after ${duration.toFixed(0)}ms:`,
-      error
+      error,
     );
-    throw new UpstreamAIError(
-      "Upstream LLM invocation failed or timed out",
-      error
-    );
+
+    throw new UpstreamAIError("Resume analysis failed");
   }
-
-  const duration = performance.now() - start;
-  console.log(
-    `Resume analysis LLM inference completed in ${duration.toFixed(0)}ms`
-  );
-
-  // Defensive validation using the canonical schema (runs unconditionally)
-  const parseResult = ResumeAnalysisSchema.safeParse(structuredResult);
-
-  if (!parseResult.success) {
-    console.error(
-      "Resume analysis output failed defensive schema validation:",
-      parseResult.error.format()
-    );
-    throw new SchemaValidationError(
-      "Model output failed defensive schema validation",
-      parseResult.error.issues
-    );
-  }
-
-  return parseResult.data;
-}
-
-let activeAnalyzeResume = defaultAnalyzeResume;
-
-export async function analyzeResume(
-  resumeText: string,
-  modelOverride?: Runnable<any, any>
-): Promise<ResumeAnalysis> {
-  return activeAnalyzeResume(resumeText, modelOverride);
-}
-
-export function setAnalyzeResumeHandler(
-  handler: (resumeText: string) => Promise<ResumeAnalysis>
-): void {
-  activeAnalyzeResume = handler;
-}
-
-export function resetAnalyzeResumeHandler(): void {
-  activeAnalyzeResume = defaultAnalyzeResume;
 }

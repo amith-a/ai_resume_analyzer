@@ -17,7 +17,7 @@ healthRouter.get("/db", async (_req: Request, res: Response) => {
       status: "ok",
       database: "connected",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Database health check failed:", error);
     res.status(500).json({
       status: "error",
@@ -41,7 +41,7 @@ healthRouter.get("/ollama", async (_req: Request, res: Response) => {
         ollama: "unreachable",
       });
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Ollama health check failed:", error);
     res.status(500).json({
       status: "error",

@@ -1,12 +1,7 @@
-import { describe, it, before, after, beforeEach } from "node:test";
+import { describe, it, before, after, beforeEach, mock } from "node:test";
 import assert from "node:assert";
 import type { Server } from "node:http";
 import { app } from "../src/app.js";
-import {
-  setAnalyzeResumeHandler,
-  resetAnalyzeResumeHandler,
-} from "../src/services/resume-analyzer.service.js";
-import { UpstreamAIError, SchemaValidationError } from "../src/errors/index.js";
 import type { ResumeAnalysis } from "../src/ai/schemas/resume-analysis.schema.js";
 
 const mockValidAnalysis: ResumeAnalysis = {
@@ -57,13 +52,33 @@ const spoofedPngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 
 describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
   let server: Server;
   let baseUrl: string;
-  let stubHandler: (text: string) => Promise<ResumeAnalysis>;
   let capturedNormalizedText: string | null = null;
+  let ollamaHandler: (requestBody: string) => Promise<Response> | Response;
+
+  const originalFetch = globalThis.fetch;
 
   before(async () => {
-    setAnalyzeResumeHandler(async (text: string) => {
-      capturedNormalizedText = text;
-      return stubHandler(text);
+    mock.method(globalThis, "fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+
+      if (url.includes("/api/chat") || url.includes("11434")) {
+        const bodyStr = typeof init?.body === "string" ? init.body : "";
+        try {
+          const parsed = JSON.parse(bodyStr);
+          const humanMsg = parsed.messages?.find((m: any) => m.role === "user");
+          if (humanMsg && typeof humanMsg.content === "string") {
+            const match = humanMsg.content.match(/<resume_text>\n([\s\S]*?)\n<\/resume_text>/);
+            if (match) {
+              capturedNormalizedText = match[1];
+            }
+          }
+        } catch {
+          // pass
+        }
+        return ollamaHandler(bodyStr);
+      }
+
+      return originalFetch(input, init);
     });
 
     await new Promise<void>((resolve) => {
@@ -78,7 +93,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
   });
 
   after(async () => {
-    resetAnalyzeResumeHandler();
+    mock.reset();
     await new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
     });
@@ -86,7 +101,21 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
 
   beforeEach(() => {
     capturedNormalizedText = null;
-    stubHandler = async () => mockValidAnalysis;
+    ollamaHandler = async () =>
+      new Response(
+        JSON.stringify({
+          model: "qwen3:4b",
+          message: {
+            role: "assistant",
+            content: JSON.stringify(mockValidAnalysis),
+          },
+          done: true,
+        }) + "\n",
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
   });
 
   it("1. returns 200 OK with structured ResumeAnalysis on valid resume upload", async () => {
@@ -165,8 +194,8 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
   });
 
   it("6. returns 502 Bad Gateway when AI service encounters upstream failure/timeout", async () => {
-    stubHandler = async () => {
-      throw new UpstreamAIError("Upstream LLM invocation failed or timed out");
+    ollamaHandler = async () => {
+      throw new Error("Ollama connection refused at 11434");
     };
 
     const formData = new FormData();
@@ -184,12 +213,23 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
   });
 
   it("7. returns 422 Unprocessable Entity when LLM output violates schema validation", async () => {
-    stubHandler = async () => {
-      throw new SchemaValidationError("Model output failed defensive schema validation", [
-        // @ts-expect-error - mock issue
-        { path: ["candidateSummary"], message: "Expected string, received number" },
-      ]);
-    };
+    ollamaHandler = async () =>
+      new Response(
+        JSON.stringify({
+          model: "qwen3:4b",
+          message: {
+            role: "assistant",
+            content: JSON.stringify({
+              candidateSummary: 12345, // invalid primitive type
+            }),
+          },
+          done: true,
+        }) + "\n",
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
 
     const formData = new FormData();
     formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
@@ -207,8 +247,8 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
   });
 
   it("8. never returns fallback or fabricated analysis data on failure", async () => {
-    stubHandler = async () => {
-      throw new UpstreamAIError("Fatal crash");
+    ollamaHandler = async () => {
+      throw new Error("Fatal crash in Ollama server");
     };
 
     const formData = new FormData();

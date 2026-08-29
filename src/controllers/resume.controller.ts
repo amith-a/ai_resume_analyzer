@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ingestResumeDocument } from "../services/resume-ingest.service.js";
-import * as analyzerService from "../services/resume-analyzer.service.js";
+import { analyzeResume } from "../services/resume-analyzer.service.js";
 
 /**
  * Controller: Handles POST /resumes - Ingests, extracts, and normalizes resume text.
@@ -36,7 +36,7 @@ export async function analyzeResumeHandler(
   res: Response
 ): Promise<void> {
   const doc = await ingestResumeDocument(req.file!.buffer);
-  const analysis = await analyzerService.analyzeResume(doc.normalizedText);
+  const analysis = await analyzeResume(doc.normalizedText);
 
   res.status(200).json({
     status: "success",
@@ -44,3 +44,4 @@ export async function analyzeResumeHandler(
     data: analysis,
   });
 }
+

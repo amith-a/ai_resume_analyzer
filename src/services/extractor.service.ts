@@ -46,7 +46,7 @@ export async function extractTextFromDocument(
     throw new DocumentExtractionError(
       `Unsupported document MIME type for text extraction: '${mimeType}'`
     );
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof DocumentExtractionError) {
       throw error;
     }
