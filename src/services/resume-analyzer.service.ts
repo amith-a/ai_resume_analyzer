@@ -42,7 +42,7 @@ export async function analyzeResume(
   const start = performance.now();
 
   try {
-    const signal = AbortSignal.timeout(90_000);
+    const signal = AbortSignal.timeout(180_000);
 
     const structuredResult = await pipeline.invoke(
       { resumeText: resumeText.trim() },

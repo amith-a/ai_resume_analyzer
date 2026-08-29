@@ -342,9 +342,9 @@ Application data
 
 # Phase 8 — Job Description Comparison
 
-## Objective
+## Completed
 
-Compare a resume against a job description.
+Compare a candidate resume against a job description.
 
 Flow:
 
@@ -356,8 +356,6 @@ LLM analysis
   ↓
 Structured comparison
 
-Possible results:
-
 - Matching skills
 - Missing skills
 - Relevant experience
@@ -367,6 +365,14 @@ Possible results:
 
 Avoid presenting an LLM-generated score as objectively accurate unless it
 has been defined and evaluated properly.
+
+Implemented:
+
+- Canonical `JobComparisonInputSchema` and `JobComparisonOutputSchema` with inferred TypeScript types (`src/ai/schemas/job-comparison.schema.ts`)
+- Isolated `jobComparisonPrompt` template with `<resume_text>` and `<job_description>` delimiters, fact grounding, qualitative `overallFit` bounds, and anti-fabrication rules (`src/ai/prompts/job-comparison.prompt.ts`)
+- Stateless `compareJobDescription()` service connecting `ChatOllama` structured output with 180s timeout and defensive `safeParse` validation (`src/services/job-comparison.service.ts`)
+- `POST /jobs/compare` endpoint integrated into `src/routes/job-comparison.routes.ts` and mounted in `src/app.ts`
+- 5 comprehensive test suites with LLM isolation passing all 40 unit and integration tests
 
 ---
 
@@ -695,18 +701,19 @@ Final target:
 
 We are currently at:
 
-Phase 7 — Resume Analysis ✅
+Phase 8 — Job Description Comparison ✅
 
 The next implementation task is:
 
-Phase 8 — Job Description Comparison
+Phase 9 — Embeddings
 
 First task:
 
-1. Define comparison schema (match score, matching skills, missing skills, experience match, evaluation reasoning).
-2. Create isolated job comparison prompt template.
-3. Implement job comparison service comparing resume against a provided job description.
-4. Integrate API endpoint (POST /resumes/compare or POST /resumes/match).
+1. Understand embeddings vs. text generation (vector representations, dimensions, vector distance metrics).
+2. Set up and verify an embedding model in Ollama (e.g. `nomic-embed-text` or `bge-small-en`).
+3. Implement native embedding generation service in Node.js.
+4. Calculate cosine similarity and Euclidean distance between text embeddings.
+5. Create comprehensive tests verifying embedding generation and similarity calculations.
 
 
 
