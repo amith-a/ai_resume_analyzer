@@ -8,6 +8,7 @@ const envSchema = z.object({
     .string()
     .url()
     .default("postgresql://postgres:postgres@postgres:5432/resume_db"),
+  DATABASE_URL_TEST: z.string().url().optional(),
   OLLAMA_HOST: z.string().url().default("http://ollama:11434"),
   OLLAMA_MODEL: z.string().min(1).default("qwen3:4b"),
 });

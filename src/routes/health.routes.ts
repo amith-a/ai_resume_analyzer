@@ -9,13 +9,21 @@ healthRouter.get("/", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
 });
 
-// GET /health/db - PostgreSQL connectivity check
+// GET /health/db - PostgreSQL connectivity and pgvector check
 healthRouter.get("/db", async (_req: Request, res: Response) => {
   try {
     await pool.query("SELECT 1");
+    const extResult = await pool.query<{ extversion: string }>(
+      "SELECT extversion FROM pg_extension WHERE extname = 'vector'"
+    );
+
+    const pgvectorVersion =
+      extResult.rows.length > 0 ? extResult.rows[0].extversion : "not installed";
+
     res.status(200).json({
       status: "ok",
       database: "connected",
+      pgvector: pgvectorVersion,
     });
   } catch (error: unknown) {
     console.error("Database health check failed:", error);

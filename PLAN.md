@@ -457,15 +457,15 @@ Before moving to the next phase, be able to explain:
 
 # Phase 10 — PostgreSQL + pgvector
 
-## Objective
+## Completed
 
 Add vector storage to PostgreSQL.
 
 Architecture:
 
 PostgreSQL
-  ├── application data
-  └── vector data
+  ├── application data (documents)
+  └── vector data (document_chunks with vector(768))
 
 Learn:
 
@@ -478,6 +478,15 @@ Learn:
 - tradeoffs of PostgreSQL + pgvector
 
 Keep normal relational data and vector data logically separated.
+
+Implemented:
+- Docker setup updated to `pgvector/pgvector:pg18` with standard volume mount `/var/lib/postgresql/data`.
+- Migration system established using `node-pg-migrate` (ESM) in `migrations/1740800000000_init_pgvector_and_schema.js`.
+- Enabled `vector` extension and created relational `documents` table and `document_chunks` table with `vector(768)` (for target `nomic-embed-text` model).
+- Established B-tree foreign key index and HNSW cosine vector index (`idx_document_chunks_embedding_hnsw USING hnsw (embedding vector_cosine_ops)`).
+- Implemented defensive vector utilities in `src/utils/vector.utils.ts` for SQL formatting and parsing.
+- Extended `/health/db` endpoint to verify both basic query execution and dynamically return active `pgvector` extension version.
+- Added comprehensive unit and integration test suite covering pgvector operations, distance metrics (`<=>`, `<->`, `<#>`), filtering, and cascade deletion.
 
 ---
 
@@ -757,18 +766,18 @@ Final target:
 We are currently at:
 
 Phase 9 — Embeddings ✅
+Phase 10 — PostgreSQL + pgvector ✅
 
 The next implementation task is:
 
-Phase 10 — PostgreSQL + pgvector
+Phase 11 — Retrieval
 
 First task:
 
-1. Update PostgreSQL Docker setup to support pgvector (e.g. using `pgvector/pgvector:pg18` or `pgvector/pgvector:pg17` image).
-2. Set up database connection pooling (`pg` client pool) and health check in Node.js.
-3. Write initial migration/SQL scripts to enable `vector` extension (`CREATE EXTENSION IF NOT EXISTS vector;`) and create schema for documents/embeddings.
-4. Verify vector column creation, indexing (e.g. HNSW / IVFFlat), and basic similarity distance operations (`<->`, `<=>`, `<#>`).
-5. Write unit & integration tests verifying database connectivity and vector storage queries.
+1. Implement embedding generation service for text queries/chunks (using Ollama and `nomic-embed-text`).
+2. Build top-k semantic retrieval helper/service querying pgvector with cosine distance (`<=>`).
+3. Add similarity thresholding and metadata filtering options to retrieval.
+4. Evaluate retrieval accuracy and test top-k retrieval with deterministic and live candidate queries.
 
 
 

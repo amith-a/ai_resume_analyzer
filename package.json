@@ -7,7 +7,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "migrate:up": "node-pg-migrate up -j ts",
+    "migrate:down": "node-pg-migrate down -j ts",
+    "migrate:create": "node-pg-migrate create -j ts",
+    "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
     "@langchain/core": "^1.2.9",
