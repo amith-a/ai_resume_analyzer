@@ -50,13 +50,16 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 ├── src/
 │   ├── ai/
 │   │   ├── prompts/
+│   │   │   ├── job-comparison.prompt.ts   # Prompt template for resume vs JD comparison
 │   │   │   └── resume-analysis.prompt.ts  # Structured prompt template & system rules
 │   │   └── schemas/
+│   │       ├── job-comparison.schema.ts   # Zod schema for structured job comparison
 │   │       └── resume-analysis.schema.ts  # Zod schema for structured resume analysis
 │   ├── config/
 │   │   ├── db.ts                          # PostgreSQL connection pool
 │   │   └── env.ts                         # Zod-validated environment config
 │   ├── controllers/
+│   │   ├── job-comparison.controller.ts   # Job description comparison handler
 │   │   └── resume.controller.ts           # Resume ingestion and analysis handlers
 │   ├── errors/
 │   │   └── index.ts                       # Typed domain/application errors
@@ -65,9 +68,11 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 │   │   └── upload.middleware.ts           # Multer file upload & size limit validation
 │   ├── routes/
 │   │   ├── health.routes.ts               # /health, /health/db, /health/ollama
+│   │   ├── job-comparison.routes.ts       # /jobs/compare
 │   │   └── resume.routes.ts               # /resumes, /resumes/analyze
 │   ├── services/
 │   │   ├── extractor.service.ts           # In-memory PDF / DOCX text extraction
+│   │   ├── job-comparison.service.ts      # LangChain structured job comparison
 │   │   ├── resume-analyzer.service.ts     # LangChain structured LLM analysis
 │   │   └── resume-ingest.service.ts       # Document validation & normalization
 │   ├── types/
@@ -219,6 +224,57 @@ curl -X POST http://localhost:3000/resumes/analyze \
     "certifications": ["AWS Certified Solutions Architect"],
     "strengths": ["System Design", "Scalability", "Mentorship"],
     "missingOrUnclear": []
+  }
+}
+```
+
+### Job Description Comparison Endpoints
+
+#### 3. Compare Resume PDF Against Job Description (`POST /jobs/compare`)
+
+Ingests a candidate resume file (PDF or DOCX), extracts/normalizes text, and performs a comprehensive fit analysis against target job description requirements using LangChain and Ollama.
+
+```bash
+curl -X POST http://localhost:3000/jobs/compare \
+  -F "file=@/path/to/resume.pdf" \
+  -F "jobDescription=Looking for a Senior Backend Engineer with TypeScript, PostgreSQL, and Kubernetes experience."
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "success",
+  "message": "Job description comparison completed successfully",
+  "data": {
+    "matchedSkills": ["TypeScript", "PostgreSQL", "Node.js"],
+    "missingSkills": ["Kubernetes"],
+    "relevantExperience": [
+      {
+        "role": "Staff Engineer",
+        "company": "Acme Corp",
+        "years": 4,
+        "relevance": "Directly matches required TypeScript and high-scale PostgreSQL database design."
+      }
+    ],
+    "experienceGaps": [
+      "Candidate lacks hands-on experience with multi-cluster Kubernetes orchestration in production."
+    ],
+    "relevantProjects": [
+      {
+        "name": "Distributed Stream Engine",
+        "relevance": "Demonstrates asynchronous system design with Node.js and distributed streaming."
+      }
+    ],
+    "strengths": [
+      "Extensive background in TypeScript microservices and relational database architecture."
+    ],
+    "gaps": [
+      "No direct Kubernetes deployment experience mentioned in resume."
+    ],
+    "improvementSuggestions": [
+      "Highlight any container deployment experience or obtain CKA certification."
+    ],
+    "overallFit": "moderate"
   }
 }
 ```

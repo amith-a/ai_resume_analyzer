@@ -378,7 +378,7 @@ Implemented:
 
 # Phase 9 — Embeddings
 
-## Objective
+## Completed
 
 Understand embeddings before implementing RAG.
 
@@ -394,9 +394,64 @@ Learn:
 
 Important distinction:
 
-LLM generation ≠ embeddings
+    LLM generation ≠ embeddings
 
 Embeddings are introduced because we need semantic retrieval.
+
+## Project Context
+
+Understand how embeddings will eventually fit into this project:
+
+Resume / Documents
+  ↓
+Chunking
+  ↓
+Embedding Model
+  ↓
+Vectors
+  ↓
+Vector Database
+  ↓
+Semantic Retrieval
+  ↓
+RAG
+  ↓
+LLM
+
+The purpose is to understand this pipeline before implementing it.
+
+## Scope
+
+Do NOT implement:
+
+- RAG
+- Vector database
+- Retrieval pipeline
+- Embedding storage
+- Production embedding infrastructure
+
+Do not modify existing application behavior.
+
+## Completion Criteria
+
+Before moving to the next phase, be able to explain:
+
+- What an embedding is.
+- Why text is converted into vectors.
+- What embedding dimensions mean.
+- What semantic similarity means.
+- How cosine similarity is used.
+- Why documents need to be chunked.
+- How embeddings differ from LLM generation.
+- How embeddings will eventually enable semantic retrieval in this project.
+
+## Covered
+
+- Conceptual understanding of embeddings vs text generation (vector representations, dimensions, vector distance metrics)
+- Semantic similarity principles (cosine similarity, dot product, Euclidean distance)
+- Chunking strategies and tradeoffs
+- Preparation for vector storage with pgvector and semantic retrieval
+
 
 ---
 
@@ -701,19 +756,19 @@ Final target:
 
 We are currently at:
 
-Phase 8 — Job Description Comparison ✅
+Phase 9 — Embeddings ✅
 
 The next implementation task is:
 
-Phase 9 — Embeddings
+Phase 10 — PostgreSQL + pgvector
 
 First task:
 
-1. Understand embeddings vs. text generation (vector representations, dimensions, vector distance metrics).
-2. Set up and verify an embedding model in Ollama (e.g. `nomic-embed-text` or `bge-small-en`).
-3. Implement native embedding generation service in Node.js.
-4. Calculate cosine similarity and Euclidean distance between text embeddings.
-5. Create comprehensive tests verifying embedding generation and similarity calculations.
+1. Update PostgreSQL Docker setup to support pgvector (e.g. using `pgvector/pgvector:pg18` or `pgvector/pgvector:pg17` image).
+2. Set up database connection pooling (`pg` client pool) and health check in Node.js.
+3. Write initial migration/SQL scripts to enable `vector` extension (`CREATE EXTENSION IF NOT EXISTS vector;`) and create schema for documents/embeddings.
+4. Verify vector column creation, indexing (e.g. HNSW / IVFFlat), and basic similarity distance operations (`<->`, `<=>`, `<#>`).
+5. Write unit & integration tests verifying database connectivity and vector storage queries.
 
 
 
