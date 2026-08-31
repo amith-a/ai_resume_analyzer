@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import { RunnableLambda } from "@langchain/core/runnables";
+import { OutputParserException } from "@langchain/core/output_parsers";
 import { compareJobDescription } from "../src/services/job-comparison.service.js";
 import { JobComparisonOutput } from "../src/ai/schemas/job-comparison.schema.js";
 import { SchemaValidationError, UpstreamAIError } from "../src/errors/index.js";
@@ -156,7 +157,24 @@ describe("compareJobDescription Service", () => {
     );
   });
 
-  it("8. accepts a valid comparison with empty arrays", async () => {
+  it("8. catches LangChain OutputParserException and maps to SchemaValidationError", async () => {
+    const parserFailingModel = RunnableLambda.from(async () => {
+      const parserErr = new OutputParserException('Failed to parse: {"matchedSkills": 12345}');
+      (parserErr as any).llmOutput = '{"matchedSkills": 12345}';
+      throw parserErr;
+    });
+
+    await assert.rejects(
+      async () => compareJobDescription(sampleResume, sampleJobDescription, parserFailingModel),
+      (err: any) => {
+        assert.ok(err instanceof SchemaValidationError, "Must throw SchemaValidationError");
+        assert.ok(Array.isArray(err.issues), "Must attach issues array");
+        return true;
+      }
+    );
+  });
+
+  it("9. accepts a valid comparison with empty arrays", async () => {
     const emptyArraysComparison: JobComparisonOutput = {
       matchedSkills: [],
       missingSkills: [],
@@ -182,7 +200,7 @@ describe("compareJobDescription Service", () => {
     assert.deepEqual(result.relevantExperience, []);
   });
 
-  it("9. never returns fallback or fabricated comparison data on model failure", async () => {
+  it("10. never returns fallback or fabricated comparison data on model failure", async () => {
     const failingModel = RunnableLambda.from(async () => {
       throw new Error("Fatal server error");
     });

@@ -34,26 +34,26 @@ healthRouter.get("/db", async (_req: Request, res: Response) => {
   }
 });
 
-// GET /health/ollama - Ollama reachability check
+// GET /health/ollama - Ollama reachability and model availability check
 healthRouter.get("/ollama", async (_req: Request, res: Response) => {
   try {
-    const response = await fetch(env.OLLAMA_HOST);
-    if (response.ok || response.status < 500) {
-      res.status(200).json({
-        status: "ok",
-        ollama: "reachable",
-      });
-    } else {
-      res.status(500).json({
-        status: "error",
-        ollama: "unreachable",
-      });
+    const response = await fetch(`${env.OLLAMA_HOST}/api/tags`);
+    if (!response.ok) {
+      res.status(500).json({ status: "error", ollama: "unreachable" });
+      return;
     }
+    const data = (await response.json()) as { models?: { name: string }[] };
+    const hasModel =
+      data.models?.some((m) => m.name.startsWith(env.OLLAMA_MODEL)) ?? false;
+
+    res.status(hasModel ? 200 : 500).json({
+      status: hasModel ? "ok" : "error",
+      ollama: "reachable",
+      model: hasModel ? "available" : "not pulled",
+    });
   } catch (error: unknown) {
     console.error("Ollama health check failed:", error);
-    res.status(500).json({
-      status: "error",
-      ollama: "unreachable",
-    });
+    res.status(500).json({ status: "error", ollama: "unreachable" });
   }
 });
+

@@ -1,12 +1,13 @@
-import { ChatOllama } from "@langchain/ollama";
 import type { Runnable } from "@langchain/core/runnables";
 import { env } from "../config/env.js";
+import { createStructuredOllamaModel } from "../ai/model-factory.js";
 import { resumeAnalysisPrompt } from "../ai/prompts/resume-analysis.prompt.js";
 import {
   ResumeAnalysis,
   ResumeAnalysisSchema,
 } from "../ai/schemas/resume-analysis.schema.js";
-import { SchemaValidationError, UpstreamAIError } from "../errors/index.js";
+import { SchemaValidationError } from "../errors/index.js";
+import { handleLlmError } from "../ai/error-handler.js";
 
 /**
  * Analyzes normalized resume text using the LLM and validates
@@ -29,59 +30,46 @@ export async function analyzeResume(
   }
 
   const structuredModel =
-    modelOverride ??
-    new ChatOllama({
-      model: env.OLLAMA_MODEL,
-      baseUrl: env.OLLAMA_HOST,
-      temperature: 0,
-      think: false,
-    }).withStructuredOutput(ResumeAnalysisSchema);
+    modelOverride ?? createStructuredOllamaModel(ResumeAnalysisSchema);
 
   const pipeline = resumeAnalysisPrompt.pipe(structuredModel);
 
   const start = performance.now();
+  let structuredResult: unknown;
 
   try {
-    const signal = AbortSignal.timeout(180_000);
-
-    const structuredResult = await pipeline.invoke(
+    const signal = AbortSignal.timeout(env.LLM_TIMEOUT_MS);
+    structuredResult = await pipeline.invoke(
       { resumeText: resumeText.trim() },
       { signal },
     );
-
-    const duration = performance.now() - start;
-
-    console.log(
-      `Resume analysis LLM inference completed in ${duration.toFixed(0)}ms`,
-    );
-
-    const parseResult = ResumeAnalysisSchema.safeParse(structuredResult);
-
-    if (!parseResult.success) {
-      console.error(
-        "Resume analysis output failed defensive schema validation:",
-        parseResult.error.format(),
-      );
-
-      throw new SchemaValidationError(
-        "Model output failed defensive schema validation",
-        parseResult.error.issues,
-      );
-    }
-
-    return parseResult.data;
   } catch (error: unknown) {
     const duration = performance.now() - start;
-
-    if (error instanceof SchemaValidationError) {
-      throw error;
-    }
-
     console.error(
       `Resume analysis LLM invocation failed after ${duration.toFixed(0)}ms:`,
       error,
     );
-
-    throw new UpstreamAIError("Resume analysis failed");
+    handleLlmError(error, ResumeAnalysisSchema);
   }
+
+  const duration = performance.now() - start;
+  console.log(
+    `Resume analysis LLM inference completed in ${duration.toFixed(0)}ms`,
+  );
+
+  // Defensive validation using the canonical schema
+  const parseResult = ResumeAnalysisSchema.safeParse(structuredResult);
+
+  if (!parseResult.success) {
+    console.error(
+      "Resume analysis output failed defensive schema validation:",
+      parseResult.error.format(),
+    );
+    throw new SchemaValidationError(
+      "Model output failed defensive schema validation",
+      parseResult.error.issues,
+    );
+  }
+
+  return parseResult.data;
 }

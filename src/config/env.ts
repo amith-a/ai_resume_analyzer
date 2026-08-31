@@ -11,6 +11,7 @@ const envSchema = z.object({
   DATABASE_URL_TEST: z.string().url().optional(),
   OLLAMA_HOST: z.string().url().default("http://ollama:11434"),
   OLLAMA_MODEL: z.string().min(1).default("qwen3:4b"),
+  LLM_TIMEOUT_MS: z.coerce.number().default(180_000),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

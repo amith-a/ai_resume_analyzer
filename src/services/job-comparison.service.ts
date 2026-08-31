@@ -1,13 +1,14 @@
-import { ChatOllama } from "@langchain/ollama";
 import type { Runnable } from "@langchain/core/runnables";
 import { env } from "../config/env.js";
+import { createStructuredOllamaModel } from "../ai/model-factory.js";
 import { jobComparisonPrompt } from "../ai/prompts/job-comparison.prompt.js";
 import {
   JobComparisonInputSchema,
   JobComparisonOutput,
   JobComparisonOutputSchema,
 } from "../ai/schemas/job-comparison.schema.js";
-import { SchemaValidationError, UpstreamAIError } from "../errors/index.js";
+import { SchemaValidationError } from "../errors/index.js";
+import { handleLlmError } from "../ai/error-handler.js";
 
 /**
  * Compares candidate resume text against a target job description and validates
@@ -38,13 +39,7 @@ export async function compareJobDescription(
     inputValidation.data;
 
   const structuredModel =
-    modelOverride ??
-    new ChatOllama({
-      model: env.OLLAMA_MODEL,
-      baseUrl: env.OLLAMA_HOST,
-      temperature: 0,
-      think: false,
-    }).withStructuredOutput(JobComparisonOutputSchema);
+    modelOverride ?? createStructuredOllamaModel(JobComparisonOutputSchema);
 
   const pipeline = jobComparisonPrompt.pipe(structuredModel);
 
@@ -52,7 +47,7 @@ export async function compareJobDescription(
   let structuredResult: unknown;
 
   try {
-    const signal = AbortSignal.timeout(180_000);
+    const signal = AbortSignal.timeout(env.LLM_TIMEOUT_MS);
     structuredResult = await pipeline.invoke(
       {
         resumeText: cleanResumeText,
@@ -66,10 +61,7 @@ export async function compareJobDescription(
       `Job comparison LLM invocation failed after ${duration.toFixed(0)}ms:`,
       error
     );
-    throw new UpstreamAIError(
-      "Upstream LLM invocation failed or timed out",
-      error
-    );
+    handleLlmError(error, JobComparisonOutputSchema);
   }
 
   const duration = performance.now() - start;

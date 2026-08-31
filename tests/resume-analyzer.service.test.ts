@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import { RunnableLambda } from "@langchain/core/runnables";
+import { OutputParserException } from "@langchain/core/output_parsers";
 import { analyzeResume } from "../src/services/resume-analyzer.service.js";
 import { UpstreamAIError, SchemaValidationError } from "../src/errors/index.js";
 import type { ResumeAnalysis } from "../src/ai/schemas/resume-analysis.schema.js";
@@ -152,7 +153,24 @@ describe("analyzeResume Service", () => {
     );
   });
 
-  it("8. never returns fallback or fabricated data when model fails", async () => {
+  it("8. catches LangChain OutputParserException and maps to SchemaValidationError", async () => {
+    const parserFailingModel = RunnableLambda.from(async () => {
+      const parserErr = new OutputParserException('Failed to parse: {"candidateSummary": 12345}');
+      (parserErr as any).llmOutput = '{"candidateSummary": 12345}';
+      throw parserErr;
+    });
+
+    await assert.rejects(
+      async () => analyzeResume("Valid resume content", parserFailingModel),
+      (err: any) => {
+        assert.ok(err instanceof SchemaValidationError, "Must throw SchemaValidationError");
+        assert.ok(Array.isArray(err.issues), "Must attach issues array");
+        return true;
+      }
+    );
+  });
+
+  it("9. never returns fallback or fabricated data when model fails", async () => {
     const failingModel = RunnableLambda.from(async () => {
       throw new Error("Fatal GPU Out Of Memory");
     });
