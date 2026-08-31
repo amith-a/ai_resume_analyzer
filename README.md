@@ -37,7 +37,8 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 - **AI & Orchestration:** LangChain (`@langchain/ollama`, `@langchain/core`)
 - **Local Model Serving:** Ollama with NVIDIA GPU acceleration (`qwen3:4b`)
 - **Document Processing:** `unpdf` (PDF), `mammoth` (DOCX), `file-type` (magic-byte detection), `multer` (upload)
-- **Database:** PostgreSQL (with `pg` connection pool, ready for `pgvector`)
+- **Database & Vectors:** PostgreSQL 18 with `pgvector` (`pgvector/pgvector:pg18`), 768-dimension vectors with HNSW cosine indexes
+- **Database Migrations:** `node-pg-migrate` (TypeScript/ESM)
 - **Validation:** Zod (runtime environment variable & structured schema validation)
 - **Containerization:** Docker & Docker Compose with Compose Watch for live hot-reload
 
@@ -47,14 +48,18 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 
 ```text
 .
+├── migrations/                            # Database migrations (node-pg-migrate)
+│   └── 1740800000000_init_pgvector_and_schema.ts
 ├── src/
 │   ├── ai/
 │   │   ├── prompts/
 │   │   │   ├── job-comparison.prompt.ts   # Prompt template for resume vs JD comparison
 │   │   │   └── resume-analysis.prompt.ts  # Structured prompt template & system rules
-│   │   └── schemas/
-│   │       ├── job-comparison.schema.ts   # Zod schema for structured job comparison
-│   │       └── resume-analysis.schema.ts  # Zod schema for structured resume analysis
+│   │   ├── schemas/
+│   │   │   ├── job-comparison.schema.ts   # Zod schema for structured job comparison
+│   │   │   └── resume-analysis.schema.ts  # Zod schema for structured resume analysis
+│   │   ├── error-handler.ts               # Centralized LLM error & OutputParser handling
+│   │   └── model-factory.ts               # Structured LangChain ChatOllama factory
 │   ├── config/
 │   │   ├── db.ts                          # PostgreSQL connection pool
 │   │   └── env.ts                         # Zod-validated environment config
@@ -79,11 +84,12 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 │   │   └── resume.types.ts                # Ingestion domain types
 │   ├── utils/
 │   │   ├── file-validator.util.ts         # Magic-byte MIME type detection
-│   │   └── text-normalizer.util.ts        # Text and whitespace normalization
+│   │   ├── text-normalizer.util.ts        # Text and whitespace normalization
+│   │   └── vector.utils.ts                # PostgreSQL pgvector literal formatting & parsing
 │   ├── app.ts                             # Express application & router bindings
 │   └── server.ts                          # Server lifecycle & graceful shutdown
-├── tests/                                 # Unit & integration test suites
-├── docker-compose.yml                     # Multi-container setup (API, Postgres, Ollama)
+├── tests/                                 # Unit & integration test suites (Node.js test runner)
+├── docker-compose.yml                     # Multi-container setup (API, Postgres + pgvector, Ollama)
 ├── Dockerfile                             # Multi-stage Node.js container definition
 ├── PLAN.md                                # Detailed phased development roadmap
 └── AGENTS.md                              # Persistent engineering guidelines & rules
@@ -116,26 +122,64 @@ PORT=3000
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=resume_db
+
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/resume_db
+DATABASE_URL_TEST=postgresql://postgres:postgres@postgres:5432/resume_test_db
 
 OLLAMA_HOST=http://ollama:11434
 OLLAMA_MODEL=qwen3:4b
+LLM_TIMEOUT_MS=180000
 ```
 
 ### 2. Run with Docker Compose
 
-Start all services (Node.js API with hot-reload watch, PostgreSQL, Ollama):
+Start all services (Node.js API with hot-reload watch, PostgreSQL with pgvector, Ollama):
 
 ```bash
 docker compose up --build
 ```
 
-### 3. Pull the Ollama Model
+### 3. Run Database Migrations
+
+Apply database migrations to create the pgvector extension and vector tables:
+
+```bash
+docker compose exec node-api npm run migrate:up
+```
+
+### 4. Pull the Ollama Model
 
 On the first run, pull the `qwen3:4b` model inside the Ollama container:
 
 ```bash
 docker exec -it ollama ollama pull qwen3:4b
+```
+
+---
+
+## Running Tests
+
+The test suite runs using the native Node.js test runner with `tsx`.
+
+### In Docker (Recommended)
+
+```bash
+# Run all 15 test suites
+docker compose exec node-api npm test
+
+# Run a specific test suite
+docker compose exec node-api npx tsx --test tests/resume-analysis.integration.test.ts
+docker compose exec node-api npx tsx --test tests/pgvector.integration.test.ts
+```
+
+### On Host Machine
+
+```bash
+# Windows PowerShell
+npm.cmd test
+
+# Specific test file
+npx.cmd tsx --test tests/job-comparison.service.test.ts
 ```
 
 ---
@@ -147,7 +191,7 @@ docker exec -it ollama ollama pull qwen3:4b
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `GET` | `/health` | API process liveness check |
-| `GET` | `/health/db` | PostgreSQL connectivity check |
+| `GET` | `/health/db` | PostgreSQL connectivity check and active `pgvector` extension version |
 | `GET` | `/health/ollama` | Ollama service reachability check |
 
 ### Resume Endpoints

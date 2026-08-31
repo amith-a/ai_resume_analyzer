@@ -747,6 +747,198 @@ Final target:
               │
               └──── Retrieval / RAG
 
+
+
+
+## Final Public API Contract
+
+The final system exposes the following public APIs. These responsibilities are architectural requirements and must not be changed without explicit approval.
+
+### 1. `POST /resumes`
+
+**Purpose:** Upload and index a resume.
+
+```text
+Resume file
+    ↓
+Validate
+    ↓
+Extract text
+    ↓
+Normalize text
+    ↓
+Create/store parent document
+    ↓
+Chunk document
+    ↓
+Generate embeddings
+    ↓
+Store chunks + embeddings in PostgreSQL/pgvector
+    ↓
+Return document/resume ID
+```
+
+This is the primary resume ingestion/indexing endpoint.
+
+The resume should be uploaded and indexed once. Downstream operations should reuse the resulting document/resume ID instead of repeatedly processing the same CV.
+
+---
+
+### 2. `POST /resumes/analyze`
+
+**Purpose:** Generate a structured analysis/profile of an already-ingested resume.
+
+```text
+Document/resume ID
+    ↓
+Retrieve resume information
+    ↓
+LLM analysis
+    ↓
+Structured validation
+    ↓
+Return ResumeAnalysis
+```
+
+This endpoint is primarily for structured resume analysis.
+
+It must reuse the existing analysis schemas and LLM output structure unless a change is explicitly required.
+
+---
+
+### 3. `POST /jobs/compare`
+
+**Purpose:** Compare an existing resume against a job description.
+
+```text
+Document/resume ID
+        +
+Job description
+        ↓
+Retrieve relevant resume evidence
+        ↓
+Combine resume evidence + job description
+        ↓
+LLM
+        ↓
+Structured comparison
+        ↓
+Return comparison result
+```
+
+This is a RAG-oriented use case.
+
+The resume should normally be referenced by its existing document/resume ID rather than re-uploaded and re-indexed.
+
+If the API contract supports direct resume upload as an alternative, that upload must follow the same ingestion/indexing pipeline rather than creating a separate processing path.
+
+---
+
+### 4. `POST /search/chunks`
+
+**Purpose:** Perform semantic search across indexed resume chunks.
+
+```text
+Search query
+    ↓
+Generate query embedding
+    ↓
+Vector search in pgvector
+    ↓
+Apply top-K
+    ↓
+Apply similarity threshold
+    ↓
+Apply supported metadata filters
+    ↓
+Return relevant chunks
+```
+
+This endpoint exposes the retrieval capability independently of the LLM.
+
+It is used to validate and demonstrate the semantic retrieval system.
+
+It must not require an LLM to perform the search.
+
+---
+
+### 5. `POST /resumes/:id/ask`
+
+**Purpose:** Answer a question about one specific resume using retrieved resume evidence.
+
+```text
+Resume/document ID
+        +
+Question
+        ↓
+Generate query embedding
+        ↓
+Retrieve relevant chunks for that document
+        ↓
+Apply retrieval rules
+        ↓
+Pass retrieved evidence to LLM
+        ↓
+Generate grounded answer
+        ↓
+Return answer
+```
+
+Retrieval must be restricted to the requested resume/document ID.
+
+The answer should be grounded in the retrieved resume evidence and should not invent information that is not supported by the resume.
+
+---
+
+## API Responsibility Boundaries
+
+The public APIs must remain separated by responsibility:
+
+```text
+POST /resumes
+    → ingestion + indexing
+
+POST /resumes/analyze
+    → structured resume analysis
+
+POST /jobs/compare
+    → resume/job comparison using relevant resume evidence
+
+POST /search/chunks
+    → semantic retrieval only
+
+POST /resumes/:id/ask
+    → resume-specific RAG question answering
+```
+
+### Internal services
+
+The following are internal components, not public APIs:
+
+```text
+Document ingestion
+Text extraction
+Chunking
+Embedding generation
+Vector storage
+Vector retrieval
+Similarity filtering
+Metadata filtering
+LLM generation
+```
+
+These components should be reused by the public APIs rather than duplicated inside individual controllers.
+
+## API Evolution Rule
+
+The current implementation may temporarily differ from this final contract while the project is being built.
+
+Do not treat the current implementation as the final architecture.
+
+Implement toward this final contract incrementally while preserving existing functionality and schemas wherever possible.
+
+Do not introduce additional public endpoints or alternate flows without explicit approval.
+
 ---
 
 # What We Will NOT Add Unless There Is a Clear Requirement
