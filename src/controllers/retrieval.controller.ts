@@ -1,85 +1,27 @@
 import type { Request, Response } from "express";
 import { retrievalService } from "../services/retrieval.service.js";
+import type { RetrieveChunksRequestInput } from "../schemas/retrieval-request.schema.js";
 
 /**
- * Controller: Handles POST /retrieval/chunks - Validates request payload and queries
- * the RetrievalService for matching document chunks.
+ * Controller: Handles POST /retrieval/chunks - Queries the RetrievalService for matching document chunks.
+ * Note: Request body validation is handled upstream by `validateBody(RetrieveChunksRequestSchema)`.
  */
 export async function retrieveChunksHandler(
-  req: Request,
+  req: Request<unknown, unknown, RetrieveChunksRequestInput>,
   res: Response,
 ): Promise<void> {
-  const { query, documentId, topK, maxDistanceThreshold, metadataFilter } = req.body ?? {};
+  const { query, documentId, topK, maxDistanceThreshold, metadataFilter } = req.body;
 
-  // 1. Validate query
-  if (!query || typeof query !== "string" || query.trim().length === 0) {
-    res.status(400).json({
-      status: "error",
-      message: "Query must be a non-empty string",
-    });
-    return;
-  }
-
-  // 2. Validate documentId
-  if (!documentId || typeof documentId !== "string" || documentId.trim().length === 0) {
-    res.status(400).json({
-      status: "error",
-      message: "Document ID must be a non-empty string",
-    });
-    return;
-  }
-
-  // 3. Validate topK (optional)
-  if (topK !== undefined) {
-    if (typeof topK !== "number" || !Number.isInteger(topK) || topK <= 0) {
-      res.status(400).json({
-        status: "error",
-        message: "topK must be a positive integer",
-      });
-      return;
-    }
-  }
-
-  // 4. Validate maxDistanceThreshold (optional)
-  if (maxDistanceThreshold !== undefined) {
-    if (
-      typeof maxDistanceThreshold !== "number" ||
-      !Number.isFinite(maxDistanceThreshold) ||
-      maxDistanceThreshold < 0
-    ) {
-      res.status(400).json({
-        status: "error",
-        message: "maxDistanceThreshold must be a non-negative finite number",
-      });
-      return;
-    }
-  }
-
-  // 5. Validate metadataFilter (optional)
-  if (metadataFilter !== undefined) {
-    if (
-      typeof metadataFilter !== "object" ||
-      metadataFilter === null ||
-      Array.isArray(metadataFilter)
-    ) {
-      res.status(400).json({
-        status: "error",
-        message: "metadataFilter must be a valid object",
-      });
-      return;
-    }
-  }
-
-  // 6. Invoke Retrieval Service
+  // Invoke Retrieval Service
   const chunks = await retrievalService.retrieveChunks({
-    query: query.trim(),
-    documentId: documentId.trim(),
+    query,
+    documentId,
     topK,
     maxDistanceThreshold,
     metadataFilter,
   });
 
-  // 7. Format clean response (sanitize out raw embedding vectors or internal details)
+  // Format clean response (sanitize out raw embedding vectors or internal details)
   const formattedChunks = chunks.map((c) => ({
     id: c.id,
     document_id: c.document_id,
