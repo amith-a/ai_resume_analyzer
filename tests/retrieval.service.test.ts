@@ -76,7 +76,7 @@ describe("Retrieval Service Unit Tests", () => {
         query: "backend nodejs developer",
         documentId: "doc-123",
         topK: 3,
-        maxDistanceThreshold: 0.20,
+        maxDistanceThreshold: 0.2,
         metadataFilter: { section: "experience" },
       },
       {
@@ -92,7 +92,7 @@ describe("Retrieval Service Unit Tests", () => {
     assert.equal(repoDocumentId, "doc-123");
     assert.deepEqual(repoVector, mockVector);
     assert.equal(repoTopK, 3);
-    assert.equal(repoThreshold, 0.20);
+    assert.equal(repoThreshold, 0.2);
     assert.deepEqual(repoMetadataFilter, { section: "experience" });
 
     // 3. Verify retrieved chunks returned unchanged

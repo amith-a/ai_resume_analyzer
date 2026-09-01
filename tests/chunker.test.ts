@@ -3,7 +3,8 @@ import assert from "node:assert";
 import { chunkText } from "../src/utils/chunker.util.js";
 
 describe("chunkText Utility Unit Tests", () => {
-  const sampleShortText = "Jane Doe\nStaff Backend Engineer\nSkills: TypeScript, PostgreSQL, Docker";
+  const sampleShortText =
+    "Jane Doe\nStaff Backend Engineer\nSkills: TypeScript, PostgreSQL, Docker";
 
   const sampleLongText = `Jane Doe
 Staff Backend Engineer with 10+ years of experience in high-throughput distributed systems.
@@ -70,11 +71,9 @@ Technologies: TypeScript, Node.js, Go, PostgreSQL, Kafka, Docker, Kubernetes, AW
 
       // At least one word from the end of current chunk should exist in the next chunk
       const lastWord = currentWords[currentWords.length - 1];
-      const hasWordOverlap = nextWords.includes(lastWord) || chunks[i + 1].content.includes(lastWord);
-      assert.ok(
-        hasWordOverlap,
-        `Expected overlap between chunk ${i} and chunk ${i + 1}`
-      );
+      const hasWordOverlap =
+        nextWords.includes(lastWord) || chunks[i + 1].content.includes(lastWord);
+      assert.ok(hasWordOverlap, `Expected overlap between chunk ${i} and chunk ${i + 1}`);
     }
   });
 
@@ -112,7 +111,7 @@ Technologies: TypeScript, Node.js, Go, PostgreSQL, Kafka, Docker, Kubernetes, AW
 
     assert.ok(
       smallChunks.length > largeChunks.length,
-      `Smaller chunk size (${smallChunks.length}) should produce more chunks than larger chunk size (${largeChunks.length})`
+      `Smaller chunk size (${smallChunks.length}) should produce more chunks than larger chunk size (${largeChunks.length})`,
     );
     assert.notEqual(smallChunks[0].content, largeChunks[0].content);
   });
@@ -124,7 +123,7 @@ Technologies: TypeScript, Node.js, Go, PostgreSQL, Kafka, Docker, Kubernetes, AW
     // Higher overlap means smaller step forward, resulting in more or differently positioned chunks
     assert.ok(
       highOverlapChunks.length >= lowOverlapChunks.length,
-      "Higher overlap should produce equal or greater number of chunks"
+      "Higher overlap should produce equal or greater number of chunks",
     );
     assert.notDeepEqual(lowOverlapChunks, highOverlapChunks);
   });
@@ -132,8 +131,17 @@ Technologies: TypeScript, Node.js, Go, PostgreSQL, Kafka, Docker, Kubernetes, AW
   it("9. validates option boundaries and throws on invalid chunkSize/chunkOverlap", () => {
     assert.throws(() => chunkText(sampleShortText, { chunkSize: 0 }), RangeError);
     assert.throws(() => chunkText(sampleShortText, { chunkSize: -10 }), RangeError);
-    assert.throws(() => chunkText(sampleShortText, { chunkSize: 100, chunkOverlap: 100 }), RangeError);
-    assert.throws(() => chunkText(sampleShortText, { chunkSize: 100, chunkOverlap: 150 }), RangeError);
-    assert.throws(() => chunkText(sampleShortText, { chunkSize: 100, chunkOverlap: -5 }), RangeError);
+    assert.throws(
+      () => chunkText(sampleShortText, { chunkSize: 100, chunkOverlap: 100 }),
+      RangeError,
+    );
+    assert.throws(
+      () => chunkText(sampleShortText, { chunkSize: 100, chunkOverlap: 150 }),
+      RangeError,
+    );
+    assert.throws(
+      () => chunkText(sampleShortText, { chunkSize: 100, chunkOverlap: -5 }),
+      RangeError,
+    );
   });
 });

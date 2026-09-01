@@ -1,11 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import type { Request, Response, NextFunction } from "express";
-import {
-  validateRequest,
-  validateBody,
-} from "../src/middlewares/validation.middleware.js";
+import type { Request, Response } from "express";
+import { validateRequest, validateBody } from "../src/middlewares/validation.middleware.js";
 
 function createMockReqRes(reqPartial: Partial<Request> = {}) {
   const req = {
@@ -53,7 +50,9 @@ describe("Validation Middleware Unit Tests", () => {
   });
 
   it("2. validateBody halts with 400 when body is invalid", () => {
-    const schema = z.object({ name: z.string({ message: "Name is required" }).min(1, "Name cannot be empty") });
+    const schema = z.object({
+      name: z.string({ message: "Name is required" }).min(1, "Name cannot be empty"),
+    });
     const middleware = validateBody(schema);
     const { req, res, getStatus, getJson } = createMockReqRes({ body: {} });
 
@@ -94,7 +93,9 @@ describe("Validation Middleware Unit Tests", () => {
   });
 
   it("4. validateRequest validates query params correctly", () => {
-    const querySchema = z.object({ topK: z.coerce.number().int().positive("topK must be positive") });
+    const querySchema = z.object({
+      topK: z.coerce.number().int().positive("topK must be positive"),
+    });
     const middleware = validateRequest({ query: querySchema });
 
     // Invalid query

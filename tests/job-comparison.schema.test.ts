@@ -110,7 +110,8 @@ describe("JobComparisonOutputSchema Validation", () => {
         role: "Staff Backend Engineer",
         company: "Acme Corp",
         years: 4,
-        relevance: "Directly aligns with the required backend architecture and microservices design experience.",
+        relevance:
+          "Directly aligns with the required backend architecture and microservices design experience.",
       },
     ],
     experienceGaps: [
@@ -119,16 +120,15 @@ describe("JobComparisonOutputSchema Validation", () => {
     relevantProjects: [
       {
         name: "Distributed Task Queue",
-        relevance: "Demonstrates asynchronous event-driven system design using Redis and TypeScript.",
+        relevance:
+          "Demonstrates asynchronous event-driven system design using Redis and TypeScript.",
       },
     ],
     strengths: [
       "Extensive TypeScript and Node.js backend development experience.",
       "Proven track record in high-throughput database optimization.",
     ],
-    gaps: [
-      "Missing hands-on experience with serverless cloud architectures.",
-    ],
+    gaps: ["Missing hands-on experience with serverless cloud architectures."],
     improvementSuggestions: [
       "Highlight any exposure to AWS or container orchestration in project descriptions.",
       "Obtain AWS Solutions Architect Associate or CKA certification to validate cloud skills.",

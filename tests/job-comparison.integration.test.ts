@@ -4,7 +4,7 @@ import type { Server } from "node:http";
 import { app } from "../src/app.js";
 import { jobComparisonPrompt } from "../src/ai/prompts/job-comparison.prompt.js";
 import type { JobComparisonOutput } from "../src/ai/schemas/job-comparison.schema.js";
-import { SchemaValidationError, UpstreamAIError } from "../src/errors/index.js";
+import { UpstreamAIError } from "../src/errors/index.js";
 
 const sampleValidComparison: JobComparisonOutput = {
   matchedSkills: ["TypeScript", "PostgreSQL", "Node.js"],
@@ -28,15 +28,13 @@ const sampleValidComparison: JobComparisonOutput = {
   ],
   strengths: ["Strong TypeScript and relational database design background."],
   gaps: ["Missing required Kubernetes experience."],
-  improvementSuggestions: [
-    "Gain hands-on experience with Kubernetes and container deployment.",
-  ],
+  improvementSuggestions: ["Gain hands-on experience with Kubernetes and container deployment."],
   overallFit: "moderate",
 };
 
 // Valid sample PDF buffer with real text
 const samplePdfBuffer = Buffer.from(
-  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 75 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Jane Doe - Senior Backend Engineer - TypeScript PostgreSQL) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000201 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n327\n%%EOF"
+  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 75 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Jane Doe - Senior Backend Engineer - TypeScript PostgreSQL) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000201 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n327\n%%EOF",
 );
 
 // Spoofed PNG buffer
@@ -50,7 +48,10 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
   let baseUrl: string;
   let capturedResumeText: string | null = null;
   let capturedJobDescription: string | null = null;
-  let mockHandler: (input: { resumeText: string; jobDescription: string }) => Promise<JobComparisonOutput>;
+  let mockHandler: (input: {
+    resumeText: string;
+    jobDescription: string;
+  }) => Promise<JobComparisonOutput>;
 
   before(async () => {
     mock.method(jobComparisonPrompt, "pipe", () => {
@@ -89,14 +90,10 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
 
   it("1. returns 200 OK with structured JobComparisonOutput on valid PDF + jobDescription upload", async () => {
     const formData = new FormData();
-    formData.append(
-      "file",
-      new Blob([samplePdfBuffer], { type: "application/pdf" }),
-      "resume.pdf"
-    );
+    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
     formData.append(
       "jobDescription",
-      "Looking for a Senior Backend Engineer with TypeScript and PostgreSQL experience."
+      "Looking for a Senior Backend Engineer with TypeScript and PostgreSQL experience.",
     );
 
     const res = await fetch(`${baseUrl}/jobs/compare`, {
@@ -116,11 +113,7 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
     const testJd = "Staff Engineer: Kubernetes and Go required";
 
     const formData = new FormData();
-    formData.append(
-      "file",
-      new Blob([samplePdfBuffer], { type: "application/pdf" }),
-      "resume.pdf"
-    );
+    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
     formData.append("jobDescription", testJd);
 
     const res = await fetch(`${baseUrl}/jobs/compare`, {
@@ -132,13 +125,9 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
     assert.ok(capturedResumeText, "Expected extracted resume text to be captured");
     assert.ok(
       capturedResumeText.includes("Jane Doe - Senior Backend Engineer"),
-      "Extracted resume text must contain candidate details"
+      "Extracted resume text must contain candidate details",
     );
-    assert.equal(
-      capturedJobDescription,
-      testJd,
-      "Supplied job description must match exactly"
-    );
+    assert.equal(capturedJobDescription, testJd, "Supplied job description must match exactly");
   });
 
   it("3. returns appropriate validation error response when resume file is missing", async () => {
@@ -158,11 +147,7 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
 
   it("4. returns 400 Bad Request when jobDescription is missing from form body", async () => {
     const formData = new FormData();
-    formData.append(
-      "file",
-      new Blob([samplePdfBuffer], { type: "application/pdf" }),
-      "resume.pdf"
-    );
+    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
 
     const res = await fetch(`${baseUrl}/jobs/compare`, {
       method: "POST",
@@ -177,11 +162,7 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
 
   it("5. returns 400 Bad Request when jobDescription is empty or whitespace-only", async () => {
     const formData = new FormData();
-    formData.append(
-      "file",
-      new Blob([samplePdfBuffer], { type: "application/pdf" }),
-      "resume.pdf"
-    );
+    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
     formData.append("jobDescription", "   \n\t  ");
 
     const res = await fetch(`${baseUrl}/jobs/compare`, {
@@ -200,7 +181,7 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
     formData.append(
       "file",
       new Blob([spoofedPngBuffer], { type: "application/pdf" }),
-      "fake_resume.pdf"
+      "fake_resume.pdf",
     );
     formData.append("jobDescription", "Software Engineer Role");
 
@@ -220,7 +201,7 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
     formData.append(
       "file",
       new Blob([corruptedPdfBuffer], { type: "application/pdf" }),
-      "corrupted.pdf"
+      "corrupted.pdf",
     );
     formData.append("jobDescription", "Software Engineer Role");
 
@@ -240,11 +221,7 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
     };
 
     const formData = new FormData();
-    formData.append(
-      "file",
-      new Blob([samplePdfBuffer], { type: "application/pdf" }),
-      "resume.pdf"
-    );
+    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
     formData.append("jobDescription", "Software Engineer Role");
 
     const res = await fetch(`${baseUrl}/jobs/compare`, {
@@ -266,11 +243,7 @@ describe("POST /jobs/compare Integration Tests (File Upload + JD)", () => {
     };
 
     const formData = new FormData();
-    formData.append(
-      "file",
-      new Blob([samplePdfBuffer], { type: "application/pdf" }),
-      "resume.pdf"
-    );
+    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
     formData.append("jobDescription", "Software Engineer Role");
 
     const res = await fetch(`${baseUrl}/jobs/compare`, {

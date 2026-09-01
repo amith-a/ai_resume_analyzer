@@ -3,9 +3,7 @@ import { app } from "./app.js";
 import { pool } from "./config/db.js";
 
 const server = app.listen(env.PORT, () => {
-  console.log(
-    `Server listening on port ${env.PORT} in ${env.NODE_ENV} mode`,
-  );
+  console.log(`Server listening on port ${env.PORT} in ${env.NODE_ENV} mode`);
 });
 
 const gracefulShutdown = async (signal: string) => {

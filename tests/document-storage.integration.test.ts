@@ -36,7 +36,7 @@ describe("Document & Chunks Storage Integration Tests", () => {
 
     if (!connectionString) {
       throw new Error(
-        "DATABASE_URL_TEST is not configured. Please define DATABASE_URL_TEST to run document storage integration tests."
+        "DATABASE_URL_TEST is not configured. Please define DATABASE_URL_TEST to run document storage integration tests.",
       );
     }
 
@@ -50,7 +50,7 @@ describe("Document & Chunks Storage Integration Tests", () => {
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       throw new Error(
-        `Failed to connect to isolated test database at DATABASE_URL_TEST (${connectionString}): ${errorMsg}`
+        `Failed to connect to isolated test database at DATABASE_URL_TEST (${connectionString}): ${errorMsg}`,
       );
     }
   });
@@ -82,7 +82,7 @@ describe("Document & Chunks Storage Integration Tests", () => {
         raw_text: "Full raw resume text for Jane Doe",
         metadata: { candidate: "Jane Doe", seniority: "Senior" },
       },
-      pool
+      pool,
     );
 
     assert.ok(createdDoc.id, "Document must have a valid generated UUID");
@@ -141,7 +141,11 @@ describe("Document & Chunks Storage Integration Tests", () => {
       const original = chunkPayloads[i];
 
       // Verify foreign key relationship
-      assert.equal(chunk.document_id, createdDoc.id, `Chunk ${i} document_id must match parent document`);
+      assert.equal(
+        chunk.document_id,
+        createdDoc.id,
+        `Chunk ${i} document_id must match parent document`,
+      );
       // Verify sequential ordering
       assert.equal(chunk.chunk_index, i, `Chunk ${i} chunk_index must equal ${i}`);
       // Verify content
@@ -152,7 +156,11 @@ describe("Document & Chunks Storage Integration Tests", () => {
       // Verify 768-dim vector embedding
       assert.ok(Array.isArray(chunk.embedding), `Chunk ${i} embedding must be an array of numbers`);
       const embedding = chunk.embedding;
-      assert.equal(embedding.length, DEFAULT_VECTOR_DIMENSION, `Chunk ${i} embedding must have 768 dimensions`);
+      assert.equal(
+        embedding.length,
+        DEFAULT_VECTOR_DIMENSION,
+        `Chunk ${i} embedding must have 768 dimensions`,
+      );
 
       // Verify numerical precision round-trip for each vector coordinate
       for (let d = 0; d < DEFAULT_VECTOR_DIMENSION; d++) {
@@ -160,7 +168,7 @@ describe("Document & Chunks Storage Integration Tests", () => {
         const retrievedVal = embedding[d];
         assert.ok(
           Math.abs(retrievedVal - expectedVal) < 1e-4,
-          `Chunk ${i} dimension ${d} value mismatch: expected ${expectedVal}, got ${retrievedVal}`
+          `Chunk ${i} dimension ${d} value mismatch: expected ${expectedVal}, got ${retrievedVal}`,
         );
       }
     }
@@ -196,12 +204,15 @@ Master of Science in Software Engineering.
       {
         embeddingsClient: mockEmbeddingsClient,
         pool,
-      }
+      },
     );
 
     testDocumentId2 = storeResult.document.id;
     assert.ok(testDocumentId2, "Document ID must be present");
-    assert.ok(storeResult.chunks.length > 1, "Expected multiple chunks to be created from raw text");
+    assert.ok(
+      storeResult.chunks.length > 1,
+      "Expected multiple chunks to be created from raw text",
+    );
 
     // READ BACK: Verify all chunks stored by the pipeline
     const fetchedChunks = await getDocumentChunks(testDocumentId2, pool);
@@ -238,7 +249,7 @@ Master of Science in Software Engineering.
         document_type: "resume",
         raw_text: "Text A",
       },
-      pool
+      pool,
     );
     testDocumentId1 = docA.id;
 
@@ -249,7 +260,7 @@ Master of Science in Software Engineering.
         document_type: "resume",
         raw_text: "Text B",
       },
-      pool
+      pool,
     );
     testDocumentId2 = docB.id;
 
@@ -291,7 +302,7 @@ Master of Science in Software Engineering.
           embedding: vec2, // Orthogonal direction to query
         },
       ],
-      pool
+      pool,
     );
 
     // Insert Chunk for Document B with exact query vector (must NOT appear in results for Doc A)
@@ -305,14 +316,21 @@ Master of Science in Software Engineering.
           embedding: vec0,
         },
       ],
-      pool
+      pool,
     );
 
     // 4. Query vector matching dim 0
     const queryVector = createTestVector(0);
 
     // 5. Test topK = 1: Returns exactly 1 (the single closest chunk)
-    const top1 = await findChunksByDocumentIdOrderedBySimilarity(docA.id, queryVector, 1, undefined, undefined, pool);
+    const top1 = await findChunksByDocumentIdOrderedBySimilarity(
+      docA.id,
+      queryVector,
+      1,
+      undefined,
+      undefined,
+      pool,
+    );
     assert.equal(top1.length, 1, "topK = 1 must return exactly 1 chunk");
     assert.equal(top1[0].chunk_index, 0, "Top 1 chunk must be the closest chunk");
     assert.ok(Math.abs(top1[0].distance - 0.0) < 1e-4);
@@ -320,7 +338,14 @@ Master of Science in Software Engineering.
     assert.equal(top1[0].document_id, docA.id);
 
     // 6. Test topK = 2: Returns the 2 closest chunks in ascending distance order
-    const top2 = await findChunksByDocumentIdOrderedBySimilarity(docA.id, queryVector, 2, undefined, undefined, pool);
+    const top2 = await findChunksByDocumentIdOrderedBySimilarity(
+      docA.id,
+      queryVector,
+      2,
+      undefined,
+      undefined,
+      pool,
+    );
     assert.equal(top2.length, 2, "topK = 2 must return exactly 2 chunks");
     assert.equal(top2[0].chunk_index, 0);
     assert.equal(top2[1].chunk_index, 1);
@@ -329,7 +354,14 @@ Master of Science in Software Engineering.
     assert.equal(top2[1].content, "PostgreSQL Database Design and Query Tuning");
 
     // 7. Test topK = 10 (larger than available 3 chunks): Returns all 3 available matching chunks
-    const top10 = await findChunksByDocumentIdOrderedBySimilarity(docA.id, queryVector, 10, undefined, undefined, pool);
+    const top10 = await findChunksByDocumentIdOrderedBySimilarity(
+      docA.id,
+      queryVector,
+      10,
+      undefined,
+      undefined,
+      pool,
+    );
     assert.equal(top10.length, 3, "topK = 10 must return all 3 available chunks for document A");
     assert.equal(top10[0].chunk_index, 0);
     assert.equal(top10[1].chunk_index, 1);
@@ -347,23 +379,44 @@ Master of Science in Software Engineering.
     // 8. Test invalid topK values are rejected with RangeError
     await assert.rejects(
       async () => {
-        await findChunksByDocumentIdOrderedBySimilarity(docA.id, queryVector, 0, undefined, undefined, pool);
+        await findChunksByDocumentIdOrderedBySimilarity(
+          docA.id,
+          queryVector,
+          0,
+          undefined,
+          undefined,
+          pool,
+        );
       },
-      { name: "RangeError", message: /topK must be a positive integer/ }
+      { name: "RangeError", message: /topK must be a positive integer/ },
     );
 
     await assert.rejects(
       async () => {
-        await findChunksByDocumentIdOrderedBySimilarity(docA.id, queryVector, -2, undefined, undefined, pool);
+        await findChunksByDocumentIdOrderedBySimilarity(
+          docA.id,
+          queryVector,
+          -2,
+          undefined,
+          undefined,
+          pool,
+        );
       },
-      { name: "RangeError", message: /topK must be a positive integer/ }
+      { name: "RangeError", message: /topK must be a positive integer/ },
     );
 
     await assert.rejects(
       async () => {
-        await findChunksByDocumentIdOrderedBySimilarity(docA.id, queryVector, 1.5, undefined, undefined, pool);
+        await findChunksByDocumentIdOrderedBySimilarity(
+          docA.id,
+          queryVector,
+          1.5,
+          undefined,
+          undefined,
+          pool,
+        );
       },
-      { name: "RangeError", message: /topK must be a positive integer/ }
+      { name: "RangeError", message: /topK must be a positive integer/ },
     );
   });
 
@@ -375,7 +428,7 @@ Master of Science in Software Engineering.
         document_type: "resume",
         raw_text: "Threshold text content",
       },
-      pool
+      pool,
     );
     testDocumentId1 = doc.id;
 
@@ -413,53 +466,106 @@ Master of Science in Software Engineering.
           embedding: vec2,
         },
       ],
-      pool
+      pool,
     );
 
     const queryVector = createTestVector(0);
 
     // 3. Test threshold = 0.20: Chunks with distance <= 0.20 included (chunk 0 and chunk 1), chunk 2 (> 0.20) excluded
-    const threshold02 = await findChunksByDocumentIdOrderedBySimilarity(doc.id, queryVector, 10, 0.20, undefined, pool);
-    assert.equal(threshold02.length, 2, "Threshold 0.20 should include exactly chunk 0 and chunk 1");
+    const threshold02 = await findChunksByDocumentIdOrderedBySimilarity(
+      doc.id,
+      queryVector,
+      10,
+      0.2,
+      undefined,
+      pool,
+    );
+    assert.equal(
+      threshold02.length,
+      2,
+      "Threshold 0.20 should include exactly chunk 0 and chunk 1",
+    );
     assert.equal(threshold02[0].chunk_index, 0);
     assert.equal(threshold02[1].chunk_index, 1);
-    assert.ok(threshold02[0].distance <= 0.20);
-    assert.ok(threshold02[1].distance <= 0.20);
+    assert.ok(threshold02[0].distance <= 0.2);
+    assert.ok(threshold02[1].distance <= 0.2);
 
     // 4. Test threshold = 0.01: Only chunk 0 (distance ~ 0.0) is included; chunk 1 (distance ~ 0.05) and chunk 2 excluded
-    const threshold001 = await findChunksByDocumentIdOrderedBySimilarity(doc.id, queryVector, 10, 0.01, undefined, pool);
+    const threshold001 = await findChunksByDocumentIdOrderedBySimilarity(
+      doc.id,
+      queryVector,
+      10,
+      0.01,
+      undefined,
+      pool,
+    );
     assert.equal(threshold001.length, 1, "Threshold 0.01 should include only chunk 0");
     assert.equal(threshold001[0].chunk_index, 0);
 
     // 5. Test boundary: threshold set to exact distance of chunk 1 -> chunk 1 must be included (<=)
     const chunk1Distance = threshold02[1].distance;
-    const boundaryResults = await findChunksByDocumentIdOrderedBySimilarity(doc.id, queryVector, 10, chunk1Distance, undefined, pool);
+    const boundaryResults = await findChunksByDocumentIdOrderedBySimilarity(
+      doc.id,
+      queryVector,
+      10,
+      chunk1Distance,
+      undefined,
+      pool,
+    );
     assert.equal(boundaryResults.length, 2, "Exact distance boundary must include chunk 1");
     assert.equal(boundaryResults[1].chunk_index, 1);
 
     // 6. Test threshold combined with topK: topK = 1 with threshold = 0.50 -> returns at most 1 chunk
-    const top1WithThreshold = await findChunksByDocumentIdOrderedBySimilarity(doc.id, queryVector, 1, 0.50, undefined, pool);
+    const top1WithThreshold = await findChunksByDocumentIdOrderedBySimilarity(
+      doc.id,
+      queryVector,
+      1,
+      0.5,
+      undefined,
+      pool,
+    );
     assert.equal(top1WithThreshold.length, 1, "topK = 1 with threshold must limit to 1 chunk");
     assert.equal(top1WithThreshold[0].chunk_index, 0);
 
     // 7. Test no qualifying chunks: query vector orthogonal to all or threshold lower than any chunk distance
     const orthogonalQuery = createTestVector(700);
-    const noResults = await findChunksByDocumentIdOrderedBySimilarity(doc.id, orthogonalQuery, 10, 0.10, undefined, pool);
+    const noResults = await findChunksByDocumentIdOrderedBySimilarity(
+      doc.id,
+      orthogonalQuery,
+      10,
+      0.1,
+      undefined,
+      pool,
+    );
     assert.deepEqual(noResults, [], "If no chunks satisfy threshold, empty array must be returned");
 
     // 8. Test invalid threshold values are rejected with RangeError
     await assert.rejects(
       async () => {
-        await findChunksByDocumentIdOrderedBySimilarity(doc.id, queryVector, 5, -0.5, undefined, pool);
+        await findChunksByDocumentIdOrderedBySimilarity(
+          doc.id,
+          queryVector,
+          5,
+          -0.5,
+          undefined,
+          pool,
+        );
       },
-      { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ }
+      { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ },
     );
 
     await assert.rejects(
       async () => {
-        await findChunksByDocumentIdOrderedBySimilarity(doc.id, queryVector, 5, NaN, undefined, pool);
+        await findChunksByDocumentIdOrderedBySimilarity(
+          doc.id,
+          queryVector,
+          5,
+          NaN,
+          undefined,
+          pool,
+        );
       },
-      { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ }
+      { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ },
     );
   });
 
@@ -471,7 +577,7 @@ Master of Science in Software Engineering.
         document_type: "resume",
         raw_text: "Doc A content",
       },
-      pool
+      pool,
     );
     testDocumentId1 = docA.id;
 
@@ -481,7 +587,7 @@ Master of Science in Software Engineering.
         document_type: "resume",
         raw_text: "Doc B content",
       },
-      pool
+      pool,
     );
     testDocumentId2 = docB.id;
 
@@ -514,7 +620,7 @@ Master of Science in Software Engineering.
           embedding: vec2,
         },
       ],
-      pool
+      pool,
     );
 
     // Insert chunk for Document B with matching metadata (must be excluded by document_id)
@@ -528,7 +634,7 @@ Master of Science in Software Engineering.
           embedding: vec0,
         },
       ],
-      pool
+      pool,
     );
 
     const queryVector = createTestVector(0);
@@ -540,7 +646,7 @@ Master of Science in Software Engineering.
       10,
       undefined,
       { section: "skills" },
-      pool
+      pool,
     );
     assert.equal(skillsResults.length, 1, "Should return only the 1 skills chunk");
     assert.equal(skillsResults[0].chunk_index, 1);
@@ -553,7 +659,7 @@ Master of Science in Software Engineering.
       10,
       undefined,
       { section: "experience", seniority: "lead" },
-      pool
+      pool,
     );
     assert.equal(leadExpResults.length, 1);
     assert.equal(leadExpResults[0].chunk_index, 0);
@@ -566,7 +672,7 @@ Master of Science in Software Engineering.
       10,
       undefined,
       { section: "certifications" },
-      pool
+      pool,
     );
     assert.deepEqual(noMatchResults, [], "Non-matching metadata filter should return empty array");
 
@@ -575,9 +681,9 @@ Master of Science in Software Engineering.
       docA.id,
       queryVector,
       5,
-      0.10,
+      0.1,
       { domain: "cloud" },
-      pool
+      pool,
     );
     // domain = "cloud" matches chunks 0 and 1, but chunk 0 has distance ~0.0 <= 0.10 and chunk 1 has distance ~1.0 > 0.10
     assert.equal(combinedResults.length, 1, "Combined filters should return only chunk 0");
@@ -592,11 +698,10 @@ Master of Science in Software Engineering.
           5,
           undefined,
           "invalid-filter" as unknown as Record<string, unknown>,
-          pool
+          pool,
         );
       },
-      { name: "TypeError", message: /metadataFilter must be a valid object/ }
+      { name: "TypeError", message: /metadataFilter must be a valid object/ },
     );
   });
 });
-

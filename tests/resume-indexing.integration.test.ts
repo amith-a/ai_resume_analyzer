@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import type { Server } from "node:http";
 import { app } from "../src/app.js";
@@ -11,7 +11,7 @@ import {
 
 // Valid sample PDF buffer with authentic text content
 const samplePdfBuffer = Buffer.from(
-  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 125 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Jane Doe - Senior Full Stack Engineer specializing in TypeScript, Node.js, PostgreSQL, and Cloud Architecture.) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000201 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n377\n%%EOF"
+  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 125 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Jane Doe - Senior Full Stack Engineer specializing in TypeScript, Node.js, PostgreSQL, and Cloud Architecture.) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000201 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n377\n%%EOF",
 );
 
 // Spoofed PNG buffer
@@ -23,9 +23,36 @@ const corruptedPdfBuffer = Buffer.from("%PDF-1.4\nCORRUPTED_BINARY_STREAM_NO_XRE
 describe("POST /resumes Indexing Integration Tests", () => {
   let server: Server;
   let baseUrl: string;
-  let createdDocumentIds: string[] = [];
+  const createdDocumentIds: string[] = [];
+  const originalFetch = globalThis.fetch;
 
   before(async () => {
+    mock.method(globalThis, "fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+
+      if (url.includes("/api/embed") || url.includes("/api/embeddings") || url.includes("11434")) {
+        const bodyStr = typeof init?.body === "string" ? init.body : "";
+        try {
+          const parsed = JSON.parse(bodyStr);
+          if (Array.isArray(parsed.input)) {
+            const embeddings = parsed.input.map(() => new Array(768).fill(0.01));
+            return new Response(JSON.stringify({ embeddings }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+        } catch {
+          // pass
+        }
+        return new Response(JSON.stringify({ embedding: new Array(768).fill(0.01) }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return originalFetch(input, init);
+    });
+
     await new Promise<void>((resolve) => {
       server = app.listen(0, () => {
         const address = server.address();
@@ -51,7 +78,7 @@ describe("POST /resumes Indexing Integration Tests", () => {
   it("1. uploads a valid PDF resume, extracts text, creates document, chunks, generates embeddings, and persists to DB", async () => {
     const formData = new FormData();
     const blob = new Blob([samplePdfBuffer], { type: "application/pdf" });
-    formData.append("resume", blob, "jane_doe_resume.pdf");
+    formData.append("file", blob, "jane_doe_resume.pdf");
 
     const res = await fetch(`${baseUrl}/resumes`, {
       method: "POST",
@@ -102,7 +129,7 @@ describe("POST /resumes Indexing Integration Tests", () => {
   it("2. rejects unsupported or spoofed file with 415 Unsupported Media Type", async () => {
     const formData = new FormData();
     const blob = new Blob([spoofedPngBuffer], { type: "application/pdf" });
-    formData.append("resume", blob, "fake_resume.pdf");
+    formData.append("file", blob, "fake_resume.pdf");
 
     const res = await fetch(`${baseUrl}/resumes`, {
       method: "POST",
@@ -118,7 +145,7 @@ describe("POST /resumes Indexing Integration Tests", () => {
   it("3. rejects corrupted PDF file with 422 Unprocessable Entity", async () => {
     const formData = new FormData();
     const blob = new Blob([corruptedPdfBuffer], { type: "application/pdf" });
-    formData.append("resume", blob, "corrupted_resume.pdf");
+    formData.append("file", blob, "corrupted_resume.pdf");
 
     const res = await fetch(`${baseUrl}/resumes`, {
       method: "POST",
@@ -141,14 +168,14 @@ describe("POST /resumes Indexing Integration Tests", () => {
     assert.equal(res.status, 400);
     const json = (await res.json()) as any;
     assert.equal(json.status, "error");
-    assert.match(json.message, /No file uploaded|Unexpected field/i);
+    assert.match(json.message, /No resume file provided|No file uploaded|Unexpected field/i);
   });
 
   it("5. rejects oversized file (>5MB) with 413 Payload Too Large", async () => {
     const largeBuffer = Buffer.alloc(6 * 1024 * 1024);
     const formData = new FormData();
     const blob = new Blob([largeBuffer], { type: "application/pdf" });
-    formData.append("resume", blob, "huge_resume.pdf");
+    formData.append("file", blob, "huge_resume.pdf");
 
     const res = await fetch(`${baseUrl}/resumes`, {
       method: "POST",

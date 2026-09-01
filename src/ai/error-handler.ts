@@ -34,14 +34,8 @@ export function handleLlmError(error: unknown, schema: z.ZodTypeAny): never {
       }
     }
 
-    throw new SchemaValidationError(
-      "Model output failed defensive schema validation",
-      issues,
-    );
+    throw new SchemaValidationError("Model output failed defensive schema validation", issues);
   }
 
-  throw new UpstreamAIError(
-    "Upstream LLM invocation failed or timed out",
-    error,
-  );
+  throw new UpstreamAIError("Upstream LLM invocation failed or timed out", error);
 }

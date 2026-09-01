@@ -53,28 +53,40 @@ export const JobComparisonOutputSchema = z.object({
     .describe("Skills explicitly found in both the resume and the job description"),
   missingSkills: z
     .array(z.string())
-    .describe("Required or preferred skills in the job description that are absent from the resume"),
+    .describe(
+      "Required or preferred skills in the job description that are absent from the resume",
+    ),
   relevantExperience: z
     .array(RelevantExperienceSchema)
     .describe("Candidate work experience entries that directly align with the job requirements"),
   experienceGaps: z
     .array(z.string())
-    .describe("Areas where the candidate's experience falls short of job requirements (e.g. seniority, domain)"),
+    .describe(
+      "Areas where the candidate's experience falls short of job requirements (e.g. seniority, domain)",
+    ),
   relevantProjects: z
     .array(RelevantProjectSchema)
-    .describe("Projects from the resume that demonstrate skills or domain knowledge relevant to the job"),
+    .describe(
+      "Projects from the resume that demonstrate skills or domain knowledge relevant to the job",
+    ),
   strengths: z
     .array(z.string())
     .describe("Key candidate strengths and strong alignment points for this specific role"),
   gaps: z
     .array(z.string())
-    .describe("Critical gaps or unfulfilled qualifications between the candidate and the job description"),
+    .describe(
+      "Critical gaps or unfulfilled qualifications between the candidate and the job description",
+    ),
   improvementSuggestions: z
     .array(z.string())
-    .describe("Actionable suggestions for the candidate to better align with or prepare for this role"),
+    .describe(
+      "Actionable suggestions for the candidate to better align with or prepare for this role",
+    ),
   overallFit: z
     .enum(["strong", "moderate", "weak"])
-    .describe("Categorical assessment of candidate fit for the target role ('strong', 'moderate', or 'weak')"),
+    .describe(
+      "Categorical assessment of candidate fit for the target role ('strong', 'moderate', or 'weak')",
+    ),
 });
 
 export type JobComparisonInput = z.infer<typeof JobComparisonInputSchema>;

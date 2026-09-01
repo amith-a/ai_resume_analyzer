@@ -14,17 +14,19 @@ export function normalizeResumeText(rawText?: string | null): string {
     return "";
   }
 
-  return rawText
-    // Standardize line endings to \n
-    .replace(/\r\n|\r/g, "\n")
-    // Remove unwanted ASCII control characters (preserving tab \x09 and newline \x0A)
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-    // Normalize horizontal whitespace and trim each line
-    .split("\n")
-    .map((line) => line.replace(/[^\S\n]+/g, " ").trim())
-    .join("\n")
-    // Collapse excessive blank lines (3+ newlines -> 2 newlines)
-    .replace(/\n{3,}/g, "\n\n")
-    // Trim entire document edges
-    .trim();
+  return (
+    rawText
+      // Standardize line endings to \n
+      .replace(/\r\n|\r/g, "\n")
+      // Remove unwanted ASCII control characters (preserving tab \x09 and newline \x0A)
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      // Normalize horizontal whitespace and trim each line
+      .split("\n")
+      .map((line) => line.replace(/[^\S\n]+/g, " ").trim())
+      .join("\n")
+      // Collapse excessive blank lines (3+ newlines -> 2 newlines)
+      .replace(/\n{3,}/g, "\n\n")
+      // Trim entire document edges
+      .trim()
+  );
 }

@@ -276,8 +276,7 @@ export async function findChunksByDocumentIdOrderedBySimilarity(
     whereClauses.push(`(embedding <=> $2::vector) <= $${queryParams.length}`);
   }
 
-  const hasMetadataFilter =
-    metadataFilter !== undefined && Object.keys(metadataFilter).length > 0;
+  const hasMetadataFilter = metadataFilter !== undefined && Object.keys(metadataFilter).length > 0;
 
   if (hasMetadataFilter) {
     queryParams.push(JSON.stringify(metadataFilter));
@@ -306,4 +305,3 @@ export async function findChunksByDocumentIdOrderedBySimilarity(
     created_at: row.created_at,
   }));
 }
-

@@ -7,10 +7,7 @@ import { storeDocumentWithChunks } from "../services/document-storage.service.js
  * Controller: Handles POST /resumes - Ingests, extracts, normalizes, and indexes resume with chunks & embeddings.
  * Note: Express 5 natively catches unhandled async rejections and forwards them to errorHandlerMiddleware.
  */
-export async function extractResumeHandler(
-  req: Request,
-  res: Response
-): Promise<void> {
+export async function extractResumeHandler(req: Request, res: Response): Promise<void> {
   const doc = await ingestResumeDocument(req.file!.buffer);
 
   const storage = await storeDocumentWithChunks({
@@ -48,10 +45,7 @@ export async function extractResumeHandler(
  * Controller: Handles POST /resumes/analyze - Ingests, normalizes, and analyzes resume with LLM.
  * Note: Express 5 natively catches unhandled async rejections and forwards them to errorHandlerMiddleware.
  */
-export async function analyzeResumeHandler(
-  req: Request,
-  res: Response
-): Promise<void> {
+export async function analyzeResumeHandler(req: Request, res: Response): Promise<void> {
   const doc = await ingestResumeDocument(req.file!.buffer);
   const analysis = await analyzeResume(doc.normalizedText);
 
@@ -61,4 +55,3 @@ export async function analyzeResumeHandler(
     data: analysis,
   });
 }
-

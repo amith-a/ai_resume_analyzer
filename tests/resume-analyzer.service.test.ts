@@ -61,13 +61,10 @@ describe("analyzeResume Service", () => {
     const testText = "Jane Doe\nSpecialist in Distributed Databases";
     await analyzeResume(testText, mockModel);
 
-    assert.ok(
-      capturedPrompt.includes(testText),
-      "Prompt must contain the dynamic resume text"
-    );
+    assert.ok(capturedPrompt.includes(testText), "Prompt must contain the dynamic resume text");
     assert.ok(
       capturedPrompt.includes(`<resume_text>\n${testText}\n</resume_text>`),
-      "Prompt must enclose resume text within <resume_text> tags"
+      "Prompt must enclose resume text within <resume_text> tags",
     );
   });
 
@@ -85,14 +82,11 @@ describe("analyzeResume Service", () => {
   });
 
   it("4. rejects empty or whitespace-only input with a validation error", async () => {
-    await assert.rejects(
-      async () => analyzeResume(""),
-      /Resume text must be a non-empty string/
-    );
+    await assert.rejects(async () => analyzeResume(""), /Resume text must be a non-empty string/);
 
     await assert.rejects(
       async () => analyzeResume("   \n\t  \n  "),
-      /Resume text must be a non-empty string/
+      /Resume text must be a non-empty string/,
     );
 
     // @ts-expect-error testing defensive check
@@ -110,10 +104,10 @@ describe("analyzeResume Service", () => {
         assert.ok(err instanceof UpstreamAIError, "Must be instance of UpstreamAIError");
         assert.ok(
           err.message.includes("Upstream LLM invocation failed or timed out"),
-          "Must have standard safe error message"
+          "Must have standard safe error message",
         );
         return true;
-      }
+      },
     );
   });
 
@@ -129,7 +123,7 @@ describe("analyzeResume Service", () => {
       (err: any) => {
         assert.ok(err instanceof UpstreamAIError, "Must wrap timeout in UpstreamAIError");
         return true;
-      }
+      },
     );
   });
 
@@ -149,7 +143,7 @@ describe("analyzeResume Service", () => {
         assert.ok(Array.isArray(err.issues), "Must attach schema validation issues");
         assert.ok(err.issues.length > 0, "Must contain specific field issues");
         return true;
-      }
+      },
     );
   });
 
@@ -166,7 +160,7 @@ describe("analyzeResume Service", () => {
         assert.ok(err instanceof SchemaValidationError, "Must throw SchemaValidationError");
         assert.ok(Array.isArray(err.issues), "Must attach issues array");
         return true;
-      }
+      },
     );
   });
 

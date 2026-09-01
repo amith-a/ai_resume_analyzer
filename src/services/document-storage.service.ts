@@ -66,7 +66,11 @@ export async function storeDocumentWithChunks(
     pool?: pg.Pool;
   },
 ): Promise<StoreDocumentResult> {
-  if (!params.raw_text || typeof params.raw_text !== "string" || params.raw_text.trim().length === 0) {
+  if (
+    !params.raw_text ||
+    typeof params.raw_text !== "string" ||
+    params.raw_text.trim().length === 0
+  ) {
     throw new TypeError("Raw text must be a non-empty string");
   }
 

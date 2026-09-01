@@ -17,11 +17,7 @@ export const uploadResumeFile = multer({
  * handles 5MB size limit errors (413), general upload errors (400),
  * and validates that a resume file was provided in the request body (400).
  */
-export function resumeUploadMiddleware(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void {
+export function resumeUploadMiddleware(req: Request, res: Response, next: NextFunction): void {
   uploadResumeFile(req, res, (err) => {
     if (err) {
       if (err instanceof multer.MulterError) {

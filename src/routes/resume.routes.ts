@@ -1,9 +1,6 @@
 import { Router } from "express";
 import { resumeUploadMiddleware } from "../middlewares/upload.middleware.js";
-import {
-  extractResumeHandler,
-  analyzeResumeHandler,
-} from "../controllers/resume.controller.js";
+import { extractResumeHandler, analyzeResumeHandler } from "../controllers/resume.controller.js";
 
 export const resumeRouter = Router();
 

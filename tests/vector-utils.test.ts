@@ -29,39 +29,30 @@ describe("Vector Utils Unit Tests", () => {
 
     it("4. throws an error when dimension does not match expected dimension", () => {
       const vec = [0.1, 0.2];
-      assert.throws(
-        () => toVectorSql(vec, 3),
-        /Vector dimension mismatch: expected 3, received 2/
-      );
+      assert.throws(() => toVectorSql(vec, 3), /Vector dimension mismatch: expected 3, received 2/);
     });
 
     it("5. throws an error when vector is empty", () => {
-      assert.throws(
-        () => toVectorSql([], 0),
-        /Vector cannot be empty/
-      );
+      assert.throws(() => toVectorSql([], 0), /Vector cannot be empty/);
     });
 
     it("6. throws an error when vector contains NaN", () => {
       const vec = [0.1, Number.NaN, 0.3];
-      assert.throws(
-        () => toVectorSql(vec, 3),
-        /Vector contains invalid number at index 1: NaN/
-      );
+      assert.throws(() => toVectorSql(vec, 3), /Vector contains invalid number at index 1: NaN/);
     });
 
     it("7. throws an error when vector contains Infinity", () => {
       const vec = [0.1, Number.POSITIVE_INFINITY, 0.3];
       assert.throws(
         () => toVectorSql(vec, 3),
-        /Vector contains invalid number at index 1: Infinity/
+        /Vector contains invalid number at index 1: Infinity/,
       );
     });
 
     it("8. throws an error when input is not an array or Float32Array", () => {
       assert.throws(
         () => toVectorSql("invalid" as any),
-        /Vector must be a valid array or Float32Array/
+        /Vector must be a valid array or Float32Array/,
       );
     });
   });
@@ -83,24 +74,18 @@ describe("Vector Utils Unit Tests", () => {
     });
 
     it("4. throws on invalid vector format (missing brackets)", () => {
-      assert.throws(
-        () => parseVectorSql("0.1,0.2,0.3"),
-        /Invalid vector string format/
-      );
+      assert.throws(() => parseVectorSql("0.1,0.2,0.3"), /Invalid vector string format/);
     });
 
     it("5. throws on non-numeric elements", () => {
       assert.throws(
         () => parseVectorSql("[0.1,abc,0.3]"),
-        /Failed to parse float at index 1: "abc"/
+        /Failed to parse float at index 1: "abc"/,
       );
     });
 
     it("6. throws on non-string input", () => {
-      assert.throws(
-        () => parseVectorSql(null as any),
-        /Vector string must be a non-empty string/
-      );
+      assert.throws(() => parseVectorSql(null as any), /Vector string must be a non-empty string/);
     });
   });
 });

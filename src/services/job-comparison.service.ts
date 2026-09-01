@@ -22,7 +22,7 @@ import { handleLlmError } from "../ai/error-handler.js";
 export async function compareJobDescription(
   resumeText: string,
   jobDescription: string,
-  modelOverride?: Runnable<any, any>
+  modelOverride?: Runnable<any, any>,
 ): Promise<JobComparisonOutput> {
   const inputValidation = JobComparisonInputSchema.safeParse({
     resumeText,
@@ -30,16 +30,12 @@ export async function compareJobDescription(
   });
 
   if (!inputValidation.success) {
-    throw new TypeError(
-      "Resume text and job description must be non-empty strings"
-    );
+    throw new TypeError("Resume text and job description must be non-empty strings");
   }
 
-  const { resumeText: cleanResumeText, jobDescription: cleanJobDescription } =
-    inputValidation.data;
+  const { resumeText: cleanResumeText, jobDescription: cleanJobDescription } = inputValidation.data;
 
-  const structuredModel =
-    modelOverride ?? createStructuredOllamaModel(JobComparisonOutputSchema);
+  const structuredModel = modelOverride ?? createStructuredOllamaModel(JobComparisonOutputSchema);
 
   const pipeline = jobComparisonPrompt.pipe(structuredModel);
 
@@ -53,21 +49,16 @@ export async function compareJobDescription(
         resumeText: cleanResumeText,
         jobDescription: cleanJobDescription,
       },
-      { signal }
+      { signal },
     );
   } catch (error: unknown) {
     const duration = performance.now() - start;
-    console.error(
-      `Job comparison LLM invocation failed after ${duration.toFixed(0)}ms:`,
-      error
-    );
+    console.error(`Job comparison LLM invocation failed after ${duration.toFixed(0)}ms:`, error);
     handleLlmError(error, JobComparisonOutputSchema);
   }
 
   const duration = performance.now() - start;
-  console.log(
-    `Job comparison LLM inference completed in ${duration.toFixed(0)}ms`
-  );
+  console.log(`Job comparison LLM inference completed in ${duration.toFixed(0)}ms`);
 
   // Defensive validation using the canonical schema
   const parseResult = JobComparisonOutputSchema.safeParse(structuredResult);
@@ -75,11 +66,11 @@ export async function compareJobDescription(
   if (!parseResult.success) {
     console.error(
       "Job comparison output failed defensive schema validation:",
-      parseResult.error.format()
+      parseResult.error.format(),
     );
     throw new SchemaValidationError(
       "Model output failed defensive schema validation",
-      parseResult.error.issues
+      parseResult.error.issues,
     );
   }
 

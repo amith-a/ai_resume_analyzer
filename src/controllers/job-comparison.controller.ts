@@ -10,15 +10,12 @@ import type { CompareJobRequestInput } from "../schemas/job-comparison-request.s
  */
 export async function compareJobDescriptionHandler(
   req: Request<unknown, unknown, CompareJobRequestInput>,
-  res: Response
+  res: Response,
 ): Promise<void> {
   const { jobDescription } = req.body;
 
   const doc = await ingestResumeDocument(req.file!.buffer);
-  const comparison = await compareJobDescription(
-    doc.normalizedText,
-    jobDescription
-  );
+  const comparison = await compareJobDescription(doc.normalizedText, jobDescription);
 
   res.status(200).json({
     status: "success",

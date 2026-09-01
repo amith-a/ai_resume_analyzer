@@ -139,7 +139,9 @@ describe("Document Repository Unit Tests", () => {
       assert.equal(executedParams[1], 0);
       assert.equal(executedParams[2], "First chunk text");
       assert.equal(executedParams[3], JSON.stringify({ section: "skills" }));
-      assert.ok(typeof executedParams[4] === "string" && (executedParams[4] as string).startsWith("["));
+      assert.ok(
+        typeof executedParams[4] === "string" && (executedParams[4] as string).startsWith("["),
+      );
     });
 
     it("5. returns empty array if input chunks array is empty", async () => {
@@ -309,7 +311,9 @@ describe("Document Repository Unit Tests", () => {
       assert.ok(executedQuery.includes("ORDER BY embedding <=> $2::vector ASC"));
       assert.ok(executedQuery.includes("LIMIT $3"));
       assert.equal(executedParams[0], "doc-123");
-      assert.ok(typeof executedParams[1] === "string" && (executedParams[1] as string).startsWith("["));
+      assert.ok(
+        typeof executedParams[1] === "string" && (executedParams[1] as string).startsWith("["),
+      );
       assert.equal(executedParams[2], 2);
     });
 
@@ -370,7 +374,11 @@ describe("Document Repository Unit Tests", () => {
       // topK = "5" (non-number string cast)
       await assert.rejects(
         async () => {
-          await findChunksByDocumentIdOrderedBySimilarity("doc-123", queryVec, "5" as unknown as number);
+          await findChunksByDocumentIdOrderedBySimilarity(
+            "doc-123",
+            queryVec,
+            "5" as unknown as number,
+          );
         },
         { name: "RangeError", message: /topK must be a positive integer/ },
       );
@@ -408,7 +416,7 @@ describe("Document Repository Unit Tests", () => {
         "doc-123",
         queryVec,
         5,
-        0.30,
+        0.3,
         undefined,
         mockPool,
       );
@@ -422,9 +430,11 @@ describe("Document Repository Unit Tests", () => {
       assert.ok(executedQuery.includes("ORDER BY embedding <=> $2::vector ASC"));
       assert.ok(executedQuery.includes("LIMIT $3"));
       assert.equal(executedParams[0], "doc-123");
-      assert.ok(typeof executedParams[1] === "string" && (executedParams[1] as string).startsWith("["));
+      assert.ok(
+        typeof executedParams[1] === "string" && (executedParams[1] as string).startsWith("["),
+      );
       assert.equal(executedParams[2], 5);
-      assert.equal(executedParams[3], 0.30);
+      assert.equal(executedParams[3], 0.3);
     });
 
     it("15. rejects invalid maxDistanceThreshold values (negative, NaN, Infinity, non-number) with RangeError", async () => {
@@ -435,7 +445,10 @@ describe("Document Repository Unit Tests", () => {
         async () => {
           await findChunksByDocumentIdOrderedBySimilarity("doc-123", queryVec, 5, -0.01);
         },
-        { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ },
+        {
+          name: "RangeError",
+          message: /maxDistanceThreshold must be a non-negative finite number/,
+        },
       );
 
       // NaN
@@ -443,7 +456,10 @@ describe("Document Repository Unit Tests", () => {
         async () => {
           await findChunksByDocumentIdOrderedBySimilarity("doc-123", queryVec, 5, NaN);
         },
-        { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ },
+        {
+          name: "RangeError",
+          message: /maxDistanceThreshold must be a non-negative finite number/,
+        },
       );
 
       // Infinity
@@ -451,7 +467,10 @@ describe("Document Repository Unit Tests", () => {
         async () => {
           await findChunksByDocumentIdOrderedBySimilarity("doc-123", queryVec, 5, Infinity);
         },
-        { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ },
+        {
+          name: "RangeError",
+          message: /maxDistanceThreshold must be a non-negative finite number/,
+        },
       );
 
       // string
@@ -464,7 +483,10 @@ describe("Document Repository Unit Tests", () => {
             "0.3" as unknown as number,
           );
         },
-        { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ },
+        {
+          name: "RangeError",
+          message: /maxDistanceThreshold must be a non-negative finite number/,
+        },
       );
     });
 
@@ -518,7 +540,6 @@ describe("Document Repository Unit Tests", () => {
     });
 
     it("17. executes query with both threshold and metadata filters properly parameterized", async () => {
-      const vec0 = createMockVector(0);
       const queryVec = createMockVector(0);
 
       let executedQuery = "";
@@ -548,10 +569,7 @@ describe("Document Repository Unit Tests", () => {
       assert.equal(executedParams[0], "doc-123");
       assert.equal(executedParams[2], 3);
       assert.equal(executedParams[3], 0.25);
-      assert.equal(
-        executedParams[4],
-        JSON.stringify({ section: "skills", level: "senior" }),
-      );
+      assert.equal(executedParams[4], JSON.stringify({ section: "skills", level: "senior" }));
     });
 
     it("18. rejects invalid metadataFilter (array, primitive) with TypeError", async () => {
@@ -560,13 +578,10 @@ describe("Document Repository Unit Tests", () => {
       // array
       await assert.rejects(
         async () => {
-          await findChunksByDocumentIdOrderedBySimilarity(
-            "doc-123",
-            queryVec,
-            5,
-            undefined,
-            ["section", "skills"] as unknown as Record<string, unknown>,
-          );
+          await findChunksByDocumentIdOrderedBySimilarity("doc-123", queryVec, 5, undefined, [
+            "section",
+            "skills",
+          ] as unknown as Record<string, unknown>);
         },
         { name: "TypeError", message: /metadataFilter must be a valid object/ },
       );
@@ -587,4 +602,3 @@ describe("Document Repository Unit Tests", () => {
     });
   });
 });
-

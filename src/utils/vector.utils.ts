@@ -1,6 +1,6 @@
 /**
  * Vector Utility Functions for pgvector
- * 
+ *
  * Provides safe serialization, validation, and parsing between JavaScript
  * number arrays and PostgreSQL vector literal representations ('[0.1,0.2,...]').
  */
@@ -18,9 +18,9 @@ export const DEFAULT_VECTOR_DIMENSION = 768;
  */
 export function toVectorSql(
   vector: number[] | Float32Array,
-  expectedDim: number = DEFAULT_VECTOR_DIMENSION
+  expectedDim: number = DEFAULT_VECTOR_DIMENSION,
 ): string {
-  if (!vector || !ArrayBuffer.isView(vector) && !Array.isArray(vector)) {
+  if (!vector || (!ArrayBuffer.isView(vector) && !Array.isArray(vector))) {
     throw new Error("Vector must be a valid array or Float32Array of numbers");
   }
 
@@ -31,9 +31,7 @@ export function toVectorSql(
   }
 
   if (expectedDim !== undefined && length !== expectedDim) {
-    throw new Error(
-      `Vector dimension mismatch: expected ${expectedDim}, received ${length}`
-    );
+    throw new Error(`Vector dimension mismatch: expected ${expectedDim}, received ${length}`);
   }
 
   const elements: string[] = new Array(length);
@@ -41,9 +39,7 @@ export function toVectorSql(
   for (let i = 0; i < length; i++) {
     const val = vector[i];
     if (typeof val !== "number" || !Number.isFinite(val)) {
-      throw new Error(
-        `Vector contains invalid number at index ${i}: ${val}`
-      );
+      throw new Error(`Vector contains invalid number at index ${i}: ${val}`);
     }
     elements[i] = val.toString();
   }

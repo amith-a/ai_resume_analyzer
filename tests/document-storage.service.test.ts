@@ -20,7 +20,8 @@ describe("Document Storage Service Unit Tests", () => {
   describe("storeDocumentWithChunks orchestration & transactions", () => {
     it("1. orchestrates chunking, embedding generation, and transactional repository storage", async () => {
       const mockDocId = "doc-uuid-1234";
-      const sampleText = "Paragraph 1 with TypeScript details.\n\nParagraph 2 with PostgreSQL details.";
+      const sampleText =
+        "Paragraph 1 with TypeScript details.\n\nParagraph 2 with PostgreSQL details.";
 
       const mockDocRow = {
         id: mockDocId,

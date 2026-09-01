@@ -8,7 +8,8 @@ import { SchemaValidationError, UpstreamAIError } from "../src/errors/index.js";
 
 describe("compareJobDescription Service", () => {
   const sampleResume = "Jane Doe\nSenior Backend Engineer\nSkills: TypeScript, Node.js, PostgreSQL";
-  const sampleJobDescription = "Staff Backend Engineer\nRequirements: TypeScript, PostgreSQL, Kubernetes";
+  const sampleJobDescription =
+    "Staff Backend Engineer\nRequirements: TypeScript, PostgreSQL, Kubernetes";
 
   const sampleValidComparison: JobComparisonOutput = {
     matchedSkills: ["TypeScript", "PostgreSQL"],
@@ -25,20 +26,14 @@ describe("compareJobDescription Service", () => {
     relevantProjects: [],
     strengths: ["Strong TypeScript and relational database design background."],
     gaps: ["Missing required Kubernetes experience."],
-    improvementSuggestions: [
-      "Gain hands-on experience with Kubernetes and container deployment.",
-    ],
+    improvementSuggestions: ["Gain hands-on experience with Kubernetes and container deployment."],
     overallFit: "moderate",
   };
 
   it("1. returns a validated JobComparisonOutput on successful model execution", async () => {
     const mockModel = RunnableLambda.from(async () => sampleValidComparison);
 
-    const result = await compareJobDescription(
-      sampleResume,
-      sampleJobDescription,
-      mockModel
-    );
+    const result = await compareJobDescription(sampleResume, sampleJobDescription, mockModel);
 
     assert.equal(result.overallFit, "moderate");
     assert.deepEqual(result.matchedSkills, ["TypeScript", "PostgreSQL"]);
@@ -64,25 +59,23 @@ describe("compareJobDescription Service", () => {
 
     assert.ok(
       humanContent.includes(`<resume_text>\n${sampleResume}\n</resume_text>`),
-      "Resume text must be wrapped inside <resume_text> tag"
+      "Resume text must be wrapped inside <resume_text> tag",
     );
     assert.ok(
-      humanContent.includes(
-        `<job_description>\n${sampleJobDescription}\n</job_description>`
-      ),
-      "Job description must be wrapped inside <job_description> tag"
+      humanContent.includes(`<job_description>\n${sampleJobDescription}\n</job_description>`),
+      "Job description must be wrapped inside <job_description> tag",
     );
   });
 
   it("3. rejects empty, missing, or whitespace-only resume text", async () => {
     await assert.rejects(
       async () => compareJobDescription("", sampleJobDescription),
-      /Resume text and job description must be non-empty strings/
+      /Resume text and job description must be non-empty strings/,
     );
 
     await assert.rejects(
       async () => compareJobDescription("   \n\t  ", sampleJobDescription),
-      /Resume text and job description must be non-empty strings/
+      /Resume text and job description must be non-empty strings/,
     );
 
     // @ts-expect-error testing runtime validation
@@ -92,12 +85,12 @@ describe("compareJobDescription Service", () => {
   it("4. rejects empty, missing, or whitespace-only job description", async () => {
     await assert.rejects(
       async () => compareJobDescription(sampleResume, ""),
-      /Resume text and job description must be non-empty strings/
+      /Resume text and job description must be non-empty strings/,
     );
 
     await assert.rejects(
       async () => compareJobDescription(sampleResume, "   \n\t  "),
-      /Resume text and job description must be non-empty strings/
+      /Resume text and job description must be non-empty strings/,
     );
 
     // @ts-expect-error testing runtime validation
@@ -115,10 +108,10 @@ describe("compareJobDescription Service", () => {
         assert.ok(err instanceof UpstreamAIError, "Must be instance of UpstreamAIError");
         assert.ok(
           err.message.includes("Upstream LLM invocation failed or timed out"),
-          "Must have standard safe error message"
+          "Must have standard safe error message",
         );
         return true;
-      }
+      },
     );
   });
 
@@ -134,7 +127,7 @@ describe("compareJobDescription Service", () => {
       (err: any) => {
         assert.ok(err instanceof UpstreamAIError, "Must wrap TimeoutError in UpstreamAIError");
         return true;
-      }
+      },
     );
   });
 
@@ -153,7 +146,7 @@ describe("compareJobDescription Service", () => {
         assert.ok(Array.isArray(err.issues), "Must attach schema validation issues");
         assert.ok(err.issues.length > 0, "Must contain specific field validation issues");
         return true;
-      }
+      },
     );
   });
 
@@ -170,7 +163,7 @@ describe("compareJobDescription Service", () => {
         assert.ok(err instanceof SchemaValidationError, "Must throw SchemaValidationError");
         assert.ok(Array.isArray(err.issues), "Must attach issues array");
         return true;
-      }
+      },
     );
   });
 
@@ -189,11 +182,7 @@ describe("compareJobDescription Service", () => {
 
     const mockModel = RunnableLambda.from(async () => emptyArraysComparison);
 
-    const result = await compareJobDescription(
-      sampleResume,
-      sampleJobDescription,
-      mockModel
-    );
+    const result = await compareJobDescription(sampleResume, sampleJobDescription, mockModel);
 
     assert.equal(result.overallFit, "weak");
     assert.deepEqual(result.matchedSkills, []);
@@ -207,11 +196,7 @@ describe("compareJobDescription Service", () => {
 
     let returnedValue = null;
     try {
-      returnedValue = await compareJobDescription(
-        sampleResume,
-        sampleJobDescription,
-        failingModel
-      );
+      returnedValue = await compareJobDescription(sampleResume, sampleJobDescription, failingModel);
     } catch {
       // expected error
     }

@@ -4,7 +4,7 @@ import { DocumentExtractionError } from "../errors/index.js";
 
 export async function extractTextFromDocument(
   buffer: Buffer,
-  mimeType: string
+  mimeType: string,
 ): Promise<{ text: string; pageCount?: number }> {
   try {
     if (mimeType === "application/pdf") {
@@ -12,12 +12,11 @@ export async function extractTextFromDocument(
         mergePages: true,
       });
 
-      const extractedText = typeof text === "string" ? text : Array.isArray(text) ? (text as string[]).join("\n") : "";
+      const extractedText =
+        typeof text === "string" ? text : Array.isArray(text) ? (text as string[]).join("\n") : "";
 
       if (!extractedText || extractedText.trim().length === 0) {
-        throw new DocumentExtractionError(
-          "Document contains no readable text or is empty"
-        );
+        throw new DocumentExtractionError("Document contains no readable text or is empty");
       }
 
       return {
@@ -26,16 +25,11 @@ export async function extractTextFromDocument(
       };
     }
 
-    if (
-      mimeType ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ) {
+    if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       const { value } = await mammoth.extractRawText({ buffer });
 
       if (!value || value.trim().length === 0) {
-        throw new DocumentExtractionError(
-          "Document contains no readable text or is empty"
-        );
+        throw new DocumentExtractionError("Document contains no readable text or is empty");
       }
 
       return {
@@ -44,7 +38,7 @@ export async function extractTextFromDocument(
     }
 
     throw new DocumentExtractionError(
-      `Unsupported document MIME type for text extraction: '${mimeType}'`
+      `Unsupported document MIME type for text extraction: '${mimeType}'`,
     );
   } catch (error: unknown) {
     if (error instanceof DocumentExtractionError) {
@@ -54,7 +48,7 @@ export async function extractTextFromDocument(
     console.error("Text extraction parser failed:", error);
     throw new DocumentExtractionError(
       "Failed to extract text from document: file may be corrupted, encrypted, or malformed",
-      error
+      error,
     );
   }
 }

@@ -63,4 +63,3 @@ export class DocumentNotFoundError extends Error {
     this.name = "DocumentNotFoundError";
   }
 }
-

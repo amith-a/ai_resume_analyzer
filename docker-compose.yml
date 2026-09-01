@@ -38,7 +38,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-resume_db}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-resume_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -52,7 +52,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: [ "CMD-SHELL", "ollama list || exit 1" ]
+      test: ["CMD-SHELL", "ollama list || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 5

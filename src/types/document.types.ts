@@ -34,7 +34,6 @@ export interface DocumentChunkWithDistanceRecord extends DocumentChunkRecord {
   distance: number;
 }
 
-
 /**
  * Parameters for creating a document record in `documents` table.
  */
@@ -88,4 +87,3 @@ export interface RetrieveChunksParams {
   maxDistanceThreshold?: number;
   metadataFilter?: Record<string, unknown>;
 }
-

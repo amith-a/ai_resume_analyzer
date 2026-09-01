@@ -1,10 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import {
-  embedText,
-  embedChunks,
-  EmbeddingsClient,
-} from "../src/services/embedding.service.js";
+import { embedText, embedChunks, EmbeddingsClient } from "../src/services/embedding.service.js";
 import { createOllamaEmbeddings } from "../src/ai/model-factory.js";
 import { UpstreamAIError } from "../src/errors/index.js";
 import { env } from "../src/config/env.js";
@@ -41,8 +37,7 @@ describe("Embedding Service Unit Tests", () => {
       const mockClient: EmbeddingsClient = {
         embedQuery: async (text: string) => {
           if (text === "Software Engineer") return queryVector;
-          if (text === "Led development of distributed microservices.")
-            return chunkVector;
+          if (text === "Led development of distributed microservices.") return chunkVector;
           throw new Error(`Unexpected input: ${text}`);
         },
       };
@@ -108,8 +103,7 @@ describe("Embedding Service Unit Tests", () => {
           assert(err instanceof UpstreamAIError);
           assert.match(err.message, /Failed to generate text embedding/i);
           assert(
-            err.cause instanceof Error &&
-              err.cause.message.includes("Ollama connection refused"),
+            err.cause instanceof Error && err.cause.message.includes("Ollama connection refused"),
           );
           return true;
         },
@@ -157,10 +151,7 @@ describe("Embedding Service Unit Tests", () => {
         (err: Error) => {
           assert(err instanceof UpstreamAIError);
           assert.match(err.message, /Failed to generate text embedding/i);
-          assert(
-            err.cause instanceof Error &&
-              err.cause.message.includes("timed out after 10ms"),
-          );
+          assert(err.cause instanceof Error && err.cause.message.includes("timed out after 10ms"));
           return true;
         },
       );
@@ -211,10 +202,7 @@ describe("Embedding Service Unit Tests", () => {
         async () => embedChunks([]),
         (err: Error) => {
           assert(err instanceof TypeError);
-          assert.match(
-            err.message,
-            /must be a non-empty array of strings/i,
-          );
+          assert.match(err.message, /must be a non-empty array of strings/i);
           return true;
         },
       );

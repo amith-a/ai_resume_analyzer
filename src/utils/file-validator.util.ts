@@ -12,9 +12,7 @@ export interface FileValidationResult {
   error?: string;
 }
 
-export async function validateResumeBuffer(
-  buffer: Buffer
-): Promise<FileValidationResult> {
+export async function validateResumeBuffer(buffer: Buffer): Promise<FileValidationResult> {
   if (!buffer || buffer.length === 0) {
     return {
       isValid: false,
@@ -31,7 +29,8 @@ export async function validateResumeBuffer(
       isValid: false,
       detectedMime: null,
       detectedExt: null,
-      error: "Unsupported or unidentifiable file type. Only genuine PDF and DOCX files are allowed.",
+      error:
+        "Unsupported or unidentifiable file type. Only genuine PDF and DOCX files are allowed.",
     };
   }
 

@@ -74,11 +74,7 @@ export async function embedText(
   const start = performance.now();
   try {
     const vectorPromise = client.embedQuery(trimmed);
-    const vector = await withTimeout(
-      vectorPromise,
-      timeoutMs,
-      "Embedding generation",
-    );
+    const vector = await withTimeout(vectorPromise, timeoutMs, "Embedding generation");
     const validated = validateEmbeddingVector(vector);
 
     const duration = performance.now() - start;
@@ -89,19 +85,13 @@ export async function embedText(
     return validated;
   } catch (error: unknown) {
     const duration = performance.now() - start;
-    console.error(
-      `Embedding generation failed after ${duration.toFixed(0)}ms:`,
-      error,
-    );
+    console.error(`Embedding generation failed after ${duration.toFixed(0)}ms:`, error);
 
     if (error instanceof TypeError) {
       throw error;
     }
 
-    throw new UpstreamAIError(
-      "Failed to generate text embedding from upstream model",
-      error,
-    );
+    throw new UpstreamAIError("Failed to generate text embedding from upstream model", error);
   }
 }
 
@@ -140,16 +130,10 @@ export async function embedChunks(
     if (typeof client.embedDocuments === "function") {
       vectorsPromise = client.embedDocuments(trimmedTexts);
     } else {
-      vectorsPromise = Promise.all(
-        trimmedTexts.map((text) => client.embedQuery(text)),
-      );
+      vectorsPromise = Promise.all(trimmedTexts.map((text) => client.embedQuery(text)));
     }
 
-    const vectors = await withTimeout(
-      vectorsPromise,
-      timeoutMs,
-      "Batch embedding generation",
-    );
+    const vectors = await withTimeout(vectorsPromise, timeoutMs, "Batch embedding generation");
 
     if (!Array.isArray(vectors) || vectors.length !== texts.length) {
       throw new Error(
@@ -160,17 +144,12 @@ export async function embedChunks(
     const validatedVectors = vectors.map((v) => validateEmbeddingVector(v));
 
     const duration = performance.now() - start;
-    console.log(
-      `Batch embedded ${validatedVectors.length} chunks in ${duration.toFixed(0)}ms`,
-    );
+    console.log(`Batch embedded ${validatedVectors.length} chunks in ${duration.toFixed(0)}ms`);
 
     return validatedVectors;
   } catch (error: unknown) {
     const duration = performance.now() - start;
-    console.error(
-      `Batch embedding failed after ${duration.toFixed(0)}ms:`,
-      error,
-    );
+    console.error(`Batch embedding failed after ${duration.toFixed(0)}ms:`, error);
 
     if (error instanceof TypeError) {
       throw error;

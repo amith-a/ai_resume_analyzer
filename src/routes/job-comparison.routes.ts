@@ -11,6 +11,5 @@ jobComparisonRouter.post(
   "/compare",
   resumeUploadMiddleware,
   validateBody(CompareJobRequestSchema),
-  compareJobDescriptionHandler
+  compareJobDescriptionHandler,
 );
-

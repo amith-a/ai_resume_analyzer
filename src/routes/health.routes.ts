@@ -14,7 +14,7 @@ healthRouter.get("/db", async (_req: Request, res: Response) => {
   try {
     await pool.query("SELECT 1");
     const extResult = await pool.query<{ extversion: string }>(
-      "SELECT extversion FROM pg_extension WHERE extname = 'vector'"
+      "SELECT extversion FROM pg_extension WHERE extname = 'vector'",
     );
 
     const pgvectorVersion =
@@ -43,8 +43,7 @@ healthRouter.get("/ollama", async (_req: Request, res: Response) => {
       return;
     }
     const data = (await response.json()) as { models?: { name: string }[] };
-    const hasModel =
-      data.models?.some((m) => m.name.startsWith(env.OLLAMA_MODEL)) ?? false;
+    const hasModel = data.models?.some((m) => m.name.startsWith(env.OLLAMA_MODEL)) ?? false;
 
     res.status(hasModel ? 200 : 500).json({
       status: hasModel ? "ok" : "error",
@@ -56,4 +55,3 @@ healthRouter.get("/ollama", async (_req: Request, res: Response) => {
     res.status(500).json({ status: "error", ollama: "unreachable" });
   }
 });
-

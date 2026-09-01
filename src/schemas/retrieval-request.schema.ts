@@ -25,7 +25,7 @@ export const RetrieveChunksRequestSchema = z.object({
   metadataFilter: z
     .custom<Record<string, unknown>>(
       (val) => typeof val === "object" && val !== null && !Array.isArray(val),
-      { message: "metadataFilter must be a valid object" }
+      { message: "metadataFilter must be a valid object" },
     )
     .optional(),
 });

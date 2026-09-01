@@ -13,21 +13,14 @@ import type { IngestedResumeDocument } from "../types/resume.types.js";
  * @throws {InvalidFileTypeError} If file type is unsupported or spoofed (415).
  * @throws {DocumentExtractionError} If document is corrupted, encrypted, or empty (422).
  */
-export async function ingestResumeDocument(
-  buffer: Buffer
-): Promise<IngestedResumeDocument> {
+export async function ingestResumeDocument(buffer: Buffer): Promise<IngestedResumeDocument> {
   const validation = await validateResumeBuffer(buffer);
 
   if (!validation.isValid || !validation.detectedMime || !validation.detectedExt) {
-    throw new InvalidFileTypeError(
-      validation.error ?? "Unsupported or unidentifiable file type"
-    );
+    throw new InvalidFileTypeError(validation.error ?? "Unsupported or unidentifiable file type");
   }
 
-  const extraction = await extractTextFromDocument(
-    buffer,
-    validation.detectedMime
-  );
+  const extraction = await extractTextFromDocument(buffer, validation.detectedMime);
 
   const normalizedText = normalizeResumeText(extraction.text);
 

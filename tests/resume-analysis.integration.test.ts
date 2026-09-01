@@ -40,7 +40,7 @@ const mockValidAnalysis: ResumeAnalysis = {
 
 // Valid sample PDF buffer
 const samplePdfBuffer = Buffer.from(
-  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 55 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Jane Doe - Lead Engineer) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000201 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n307\n%%EOF"
+  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 55 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Jane Doe - Lead Engineer) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000201 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n307\n%%EOF",
 );
 
 // Corrupted PDF buffer (has PDF magic header but corrupt stream/xref)
@@ -114,7 +114,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
         {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
   });
 
@@ -174,13 +174,17 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
     assert.equal(json.status, "error");
     assert.ok(
       json.message.toLowerCase().includes("unsupported"),
-      "Message must mention unsupported type"
+      "Message must mention unsupported type",
     );
   });
 
   it("5. returns 422 Unprocessable Entity for corrupted or unreadable documents", async () => {
     const formData = new FormData();
-    formData.append("file", new Blob([corruptedPdfBuffer], { type: "application/pdf" }), "corrupt.pdf");
+    formData.append(
+      "file",
+      new Blob([corruptedPdfBuffer], { type: "application/pdf" }),
+      "corrupt.pdf",
+    );
 
     const res = await fetch(`${baseUrl}/resumes/analyze`, {
       method: "POST",
@@ -228,7 +232,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
         {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
 
     const formData = new FormData();

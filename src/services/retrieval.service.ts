@@ -50,7 +50,11 @@ export async function retrieveChunks(
     throw new TypeError("Query must be a non-empty string");
   }
 
-  if (!params.documentId || typeof params.documentId !== "string" || params.documentId.trim().length === 0) {
+  if (
+    !params.documentId ||
+    typeof params.documentId !== "string" ||
+    params.documentId.trim().length === 0
+  ) {
     throw new TypeError("Document ID must be a non-empty string");
   }
 
@@ -84,4 +88,3 @@ export async function retrieveChunks(
 export const retrievalService = {
   retrieveChunks,
 };
-

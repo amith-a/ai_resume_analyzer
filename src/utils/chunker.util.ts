@@ -27,10 +27,7 @@ export interface TextChunk {
  * @param options - Configurable chunkSize and chunkOverlap.
  * @returns TextChunk[] - Array of ordered text chunks with sequential 0-based chunkIndex.
  */
-export function chunkText(
-  text?: string | null,
-  options?: ChunkOptions,
-): TextChunk[] {
+export function chunkText(text?: string | null, options?: ChunkOptions): TextChunk[] {
   if (!text || typeof text !== "string" || text.trim().length === 0) {
     return [];
   }
@@ -38,11 +35,7 @@ export function chunkText(
   const chunkSize = options?.chunkSize ?? env.CHUNK_SIZE;
   const chunkOverlap = options?.chunkOverlap ?? env.CHUNK_OVERLAP;
 
-  if (
-    typeof chunkSize !== "number" ||
-    chunkSize <= 0 ||
-    !Number.isFinite(chunkSize)
-  ) {
+  if (typeof chunkSize !== "number" || chunkSize <= 0 || !Number.isFinite(chunkSize)) {
     throw new RangeError("chunkSize must be a positive integer");
   }
 

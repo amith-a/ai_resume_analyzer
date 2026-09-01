@@ -20,7 +20,10 @@ describe("resumeAnalysisPrompt", () => {
     });
 
     const humanContent = typeof messages[1].content === "string" ? messages[1].content : "";
-    assert.ok(humanContent.includes(testResume), "Human message must contain the dynamic resume text");
+    assert.ok(
+      humanContent.includes(testResume),
+      "Human message must contain the dynamic resume text",
+    );
   });
 
   it("3. wraps input in explicit <resume_text> XML delimiters", async () => {
@@ -32,7 +35,7 @@ describe("resumeAnalysisPrompt", () => {
     const humanContent = typeof messages[1].content === "string" ? messages[1].content : "";
     assert.ok(
       humanContent.includes(`<resume_text>\n${testResume}\n</resume_text>`),
-      "Resume text must be enclosed within <resume_text> tags"
+      "Resume text must be enclosed within <resume_text> tags",
     );
   });
 
@@ -44,7 +47,10 @@ describe("resumeAnalysisPrompt", () => {
     const systemContent = typeof messages[0].content === "string" ? messages[0].content : "";
     assert.ok(systemContent.includes("Fact Grounding"), "Must include Fact Grounding rule");
     assert.ok(systemContent.includes("No Fabrication"), "Must include No Fabrication rule");
-    assert.ok(systemContent.toLowerCase().includes("never invent"), "Must explicitly forbid inventing data");
+    assert.ok(
+      systemContent.toLowerCase().includes("never invent"),
+      "Must explicitly forbid inventing data",
+    );
   });
 
   it("5. system prompt instructs null for unknown years and empty arrays for missing sections", async () => {
@@ -56,7 +62,10 @@ describe("resumeAnalysisPrompt", () => {
     assert.ok(systemContent.includes("startYear"), "Must reference startYear");
     assert.ok(systemContent.includes("endYear"), "Must reference endYear");
     assert.ok(systemContent.includes("null"), "Must instruct using null for missing years");
-    assert.ok(systemContent.includes("empty list []"), "Must instruct using [] for missing sections");
+    assert.ok(
+      systemContent.includes("empty list []"),
+      "Must instruct using [] for missing sections",
+    );
   });
 
   it("6. system prompt addresses prompt injection defenses", async () => {
