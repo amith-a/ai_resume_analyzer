@@ -492,7 +492,7 @@ Implemented:
 
 # Phase 11 — Retrieval
 
-## Objective
+## completed
 
 Build retrieval independently before calling it RAG.
 
@@ -515,6 +515,32 @@ Learn:
 - overlap
 - retrieval quality
 - irrelevant results
+
+## Covered
+
+- **Embedding Service (`src/services/embedding.service.ts`)**:
+  - `embedText()` and `embedChunks()` using Ollama `nomic-embed-text` (768 dimensions).
+  - Bounded timeouts, vector dimension validation, and upstream AI error mapping.
+- **Document & Chunk Storage (`src/repositories/document.repository.ts`, `src/services/document-storage.service.ts`)**:
+  - `storeDocumentWithChunks()` orchestrating parent document insertion, chunking, embedding generation, and atomic PostgreSQL transactions.
+  - Cascade deletion and read-back verification.
+- **Vector Retrieval with pgvector**:
+  - Cosine distance similarity ordering (`ORDER BY embedding <=> $2::vector ASC`).
+  - Scoped strictly by `document_id`.
+- **Top-K Retrieval**:
+  - Parameterized `LIMIT $3` with strict validation rejecting non-positive integers, floats, and NaN with `RangeError`.
+- **Similarity Threshold**:
+  - Maximum allowable cosine distance threshold (`(embedding <=> $2::vector) <= $4`) returning only qualifying chunks.
+- **Metadata Filtering**:
+  - Safe parameterized JSONB containment filtering (`metadata @> $5::jsonb`) preventing SQL injection.
+- **Retrieval Service (`src/services/retrieval.service.ts`)**:
+  - `retrieveChunks()` orchestrating query embedding generation, parameter validation, and vector repository search without database SQL in the service layer.
+  - Clean dependency injection for testability.
+- **Retrieval API Endpoint (`src/routes/retrieval.routes.ts`, `src/controllers/retrieval.controller.ts`)**:
+  - `POST /retrieval/chunks` with input validation and clean JSON response formatting.
+- **Connected Resume Ingestion & Indexing (`src/controllers/resume.controller.ts`)**:
+  - `POST /resumes` full pipeline: validation → extraction → normalization → document creation → chunking → embedding → PostgreSQL/pgvector storage.
+
 
 ---
 
@@ -959,17 +985,17 @@ We are currently at:
 
 Phase 9 — Embeddings ✅
 Phase 10 — PostgreSQL + pgvector ✅
+Phase 11 — Retrieval & Ingestion ✅
 
 The next implementation task is:
 
-Phase 11 — Retrieval
+Phase 12 — Context Assembly & Grounding
 
-First task:
+First tasks:
 
-1. Implement embedding generation service for text queries/chunks (using Ollama and `nomic-embed-text`).
-2. Build top-k semantic retrieval helper/service querying pgvector with cosine distance (`<=>`).
-3. Add similarity thresholding and metadata filtering options to retrieval.
-4. Evaluate retrieval accuracy and test top-k retrieval with deterministic and live candidate queries.
+1. Design structured prompt context assembler combining retrieved chunks and document evidence.
+2. Implement strict grounding rules and token/budget controls to prevent hallucination.
+3. Test context assembly and formatting independently with deterministic test fixtures.
 
 
 

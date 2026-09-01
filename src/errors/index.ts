@@ -52,3 +52,15 @@ export class UpstreamAIError extends Error {
     }
   }
 }
+
+/**
+ * Thrown when a requested document cannot be found in the database.
+ * HTTP Mapping: 404 Not Found
+ */
+export class DocumentNotFoundError extends Error {
+  constructor(message: string = "Document not found") {
+    super(message);
+    this.name = "DocumentNotFoundError";
+  }
+}
+

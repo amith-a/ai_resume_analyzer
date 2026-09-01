@@ -11,7 +11,11 @@ const envSchema = z.object({
   DATABASE_URL_TEST: z.string().url().optional(),
   OLLAMA_HOST: z.string().url().default("http://ollama:11434"),
   OLLAMA_MODEL: z.string().min(1).default("qwen3:4b"),
+  OLLAMA_EMBEDDING_MODEL: z.string().min(1).default("nomic-embed-text"),
   LLM_TIMEOUT_MS: z.coerce.number().default(180_000),
+  EMBEDDING_TIMEOUT_MS: z.coerce.number().default(60_000),
+  CHUNK_SIZE: z.coerce.number().positive().default(500),
+  CHUNK_OVERLAP: z.coerce.number().nonnegative().default(100),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

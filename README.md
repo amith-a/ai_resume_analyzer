@@ -1,6 +1,6 @@
 # AI Resume Analyzer
 
-A production-conscious backend service for AI-powered resume analysis, demonstrating practical LLM workflows, structured extraction, vector embeddings, and RAG in **pure Node.js / TypeScript**.
+A production-conscious backend service for AI-powered resume analysis, demonstrating practical LLM workflows, structured extraction, vector embeddings, semantic retrieval, and RAG in **pure Node.js / TypeScript**.
 
 ---
 
@@ -21,11 +21,13 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
            │           │            │
            ▼           ▼            ▼
       PostgreSQL   LangChain   PDF / DOCX
-      (+pgvector)      │       Ingestion
-                       ▼
-                    Ollama
-                       │
-                   Qwen 3 4B
+     (+ pgvector)      │       Ingestion
+           ▲           ▼
+           │        Ollama
+           │        ├── Qwen 3 4B (LLM)
+           │        └── Nomic Embed Text (Embeddings)
+           │
+           └──── Semantic Retrieval Service
 ```
 
 ---
@@ -35,7 +37,9 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 - **Runtime & Language:** Node.js 24 (ESM), TypeScript (NodeNext resolution)
 - **API Framework:** Express 5
 - **AI & Orchestration:** LangChain (`@langchain/ollama`, `@langchain/core`)
-- **Local Model Serving:** Ollama with NVIDIA GPU acceleration (`qwen3:4b`)
+- **Local Model Serving:** Ollama with NVIDIA GPU acceleration
+  - **Generation LLM:** `qwen3:4b`
+  - **Embedding Model:** `nomic-embed-text` (768 dimensions)
 - **Document Processing:** `unpdf` (PDF), `mammoth` (DOCX), `file-type` (magic-byte detection), `multer` (upload)
 - **Database & Vectors:** PostgreSQL 18 with `pgvector` (`pgvector/pgvector:pg18`), 768-dimension vectors with HNSW cosine indexes
 - **Database Migrations:** `node-pg-migrate` (TypeScript/ESM)
@@ -59,30 +63,39 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 │   │   │   ├── job-comparison.schema.ts   # Zod schema for structured job comparison
 │   │   │   └── resume-analysis.schema.ts  # Zod schema for structured resume analysis
 │   │   ├── error-handler.ts               # Centralized LLM error & OutputParser handling
-│   │   └── model-factory.ts               # Structured LangChain ChatOllama factory
+│   │   └── model-factory.ts               # Structured LangChain ChatOllama & OllamaEmbeddings factory
 │   ├── config/
 │   │   ├── db.ts                          # PostgreSQL connection pool
 │   │   └── env.ts                         # Zod-validated environment config
 │   ├── controllers/
 │   │   ├── job-comparison.controller.ts   # Job description comparison handler
-│   │   └── resume.controller.ts           # Resume ingestion and analysis handlers
+│   │   ├── resume.controller.ts           # Resume ingestion and analysis handlers
+│   │   └── retrieval.controller.ts        # Semantic vector chunk retrieval handler
 │   ├── errors/
 │   │   └── index.ts                       # Typed domain/application errors
 │   ├── middlewares/
 │   │   ├── error.middleware.ts            # Centralized error-handling middleware
 │   │   └── upload.middleware.ts           # Multer file upload & size limit validation
+│   ├── repositories/
+│   │   └── document.repository.ts         # Pure SQL queries for documents, chunks, and vector similarity
 │   ├── routes/
 │   │   ├── health.routes.ts               # /health, /health/db, /health/ollama
 │   │   ├── job-comparison.routes.ts       # /jobs/compare
-│   │   └── resume.routes.ts               # /resumes, /resumes/analyze
+│   │   ├── resume.routes.ts               # /resumes, /resumes/analyze
+│   │   └── retrieval.routes.ts            # /retrieval/chunks
 │   ├── services/
+│   │   ├── document-storage.service.ts    # Transactional document & chunk persistence
+│   │   ├── embedding.service.ts           # Ollama 768-dim text and chunk embeddings
 │   │   ├── extractor.service.ts           # In-memory PDF / DOCX text extraction
 │   │   ├── job-comparison.service.ts      # LangChain structured job comparison
 │   │   ├── resume-analyzer.service.ts     # LangChain structured LLM analysis
-│   │   └── resume-ingest.service.ts       # Document validation & normalization
+│   │   ├── resume-ingest.service.ts       # Document validation & normalization
+│   │   └── retrieval.service.ts           # Query embedding & vector repository orchestration
 │   ├── types/
+│   │   ├── document.types.ts              # Document, chunk, and retrieval domain types
 │   │   └── resume.types.ts                # Ingestion domain types
 │   ├── utils/
+│   │   ├── chunker.util.ts                # Recursive paragraph & sentence chunking
 │   │   ├── file-validator.util.ts         # Magic-byte MIME type detection
 │   │   ├── text-normalizer.util.ts        # Text and whitespace normalization
 │   │   └── vector.utils.ts                # PostgreSQL pgvector literal formatting & parsing
@@ -128,7 +141,9 @@ DATABASE_URL_TEST=postgresql://postgres:postgres@postgres:5432/resume_test_db
 
 OLLAMA_HOST=http://ollama:11434
 OLLAMA_MODEL=qwen3:4b
+EMBEDDING_MODEL=nomic-embed-text
 LLM_TIMEOUT_MS=180000
+EMBEDDING_TIMEOUT_MS=60000
 ```
 
 ### 2. Run with Docker Compose
@@ -141,18 +156,22 @@ docker compose up --build
 
 ### 3. Run Database Migrations
 
-Apply database migrations to create the pgvector extension and vector tables:
+Apply database migrations to create the pgvector extension, documents table, and document chunks vector tables:
 
 ```bash
 docker compose exec node-api npm run migrate:up
 ```
 
-### 4. Pull the Ollama Model
+### 4. Pull Ollama Models
 
-On the first run, pull the `qwen3:4b` model inside the Ollama container:
+Pull the required LLM and embedding models inside the Ollama container:
 
 ```bash
+# Generation model (Qwen 3 4B)
 docker exec -it ollama ollama pull qwen3:4b
+
+# Embedding model (768 dimensions)
+docker exec -it ollama ollama pull nomic-embed-text
 ```
 
 ---
@@ -164,12 +183,12 @@ The test suite runs using the native Node.js test runner with `tsx`.
 ### In Docker (Recommended)
 
 ```bash
-# Run all 15 test suites
+# Run all unit and integration test suites
 docker compose exec node-api npm test
 
-# Run a specific test suite
-docker compose exec node-api npx tsx --test tests/resume-analysis.integration.test.ts
-docker compose exec node-api npx tsx --test tests/pgvector.integration.test.ts
+# Run specific test suites
+docker compose exec node-api npx tsx --test tests/retrieval.service.test.ts
+docker compose exec node-api npx tsx --test tests/document-storage.integration.test.ts
 ```
 
 ### On Host Machine
@@ -179,7 +198,7 @@ docker compose exec node-api npx tsx --test tests/pgvector.integration.test.ts
 npm.cmd test
 
 # Specific test file
-npx.cmd tsx --test tests/job-comparison.service.test.ts
+npx.cmd tsx --test tests/retrieval.routes.test.ts
 ```
 
 ---
@@ -194,11 +213,13 @@ npx.cmd tsx --test tests/job-comparison.service.test.ts
 | `GET` | `/health/db` | PostgreSQL connectivity check and active `pgvector` extension version |
 | `GET` | `/health/ollama` | Ollama service reachability check |
 
-### Resume Endpoints
+---
 
-#### 1. Ingest & Extract Resume Text (`POST /resumes`)
+### Resume Ingestion & Analysis
 
-Extracts and normalizes text from an uploaded PDF or DOCX file.
+#### 1. Ingest, Extract & Index Resume (`POST /resumes`)
+
+Extracts and normalizes text from an uploaded PDF or DOCX file, chunks the text, computes 768-dim embeddings, and persists the document and chunks to PostgreSQL / pgvector in a single atomic transaction.
 
 ```bash
 curl -X POST http://localhost:3000/resumes \
@@ -209,14 +230,16 @@ curl -X POST http://localhost:3000/resumes \
 ```json
 {
   "status": "success",
-  "message": "Resume text extracted and normalized successfully",
+  "message": "Resume processed and indexed successfully",
   "data": {
+    "documentId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
     "filename": "resume.pdf",
     "size": 124500,
     "detectedMime": "application/pdf",
     "detectedExt": "pdf",
     "characterCount": 3450,
     "pageCount": 2,
+    "chunkCount": 8,
     "text": "Jane Doe\nSoftware Engineer..."
   }
 }
@@ -272,9 +295,61 @@ curl -X POST http://localhost:3000/resumes/analyze \
 }
 ```
 
-### Job Description Comparison Endpoints
+---
 
-#### 3. Compare Resume PDF Against Job Description (`POST /jobs/compare`)
+### Semantic Retrieval
+
+#### 3. Semantic Chunk Search (`POST /retrieval/chunks`)
+
+Queries stored document chunks using natural language similarity, pgvector cosine distance (`<=>`), optional distance thresholding, and metadata filtering.
+
+```bash
+curl -X POST http://localhost:3000/retrieval/chunks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "backend developer with PostgreSQL and AWS experience",
+    "documentId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "topK": 3,
+    "maxDistanceThreshold": 0.4,
+    "metadataFilter": {
+      "section": "experience"
+    }
+  }'
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `query` | `string` | **Yes** | Natural language retrieval query |
+| `documentId` | `string` | **Yes** | Document UUID to search within |
+| `topK` | `number` | No | Maximum number of chunks to return (default: `5`) |
+| `maxDistanceThreshold` | `number` | No | Maximum allowable cosine distance (e.g. `0.4`) |
+| `metadataFilter` | `object` | No | Key-value constraints for chunk JSON metadata |
+
+**Response (200 OK):**
+```json
+{
+  "chunks": [
+    {
+      "id": "c1d2e3f4-5678-90ab-cdef-1234567890ab",
+      "document_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "chunk_index": 0,
+      "content": "Staff Backend Engineer at Acme Corp. Designed core PostgreSQL database architecture and AWS cloud microservices.",
+      "metadata": {
+        "section": "experience"
+      },
+      "distance": 0.1184
+    }
+  ]
+}
+```
+
+---
+
+### Job Description Comparison
+
+#### 4. Compare Resume Against Job Description (`POST /jobs/compare`)
 
 Ingests a candidate resume file (PDF or DOCX), extracts/normalizes text, and performs a comprehensive fit analysis against target job description requirements using LangChain and Ollama.
 
@@ -327,5 +402,5 @@ curl -X POST http://localhost:3000/jobs/compare \
 
 ## Development Guidelines
 
-- **Roadmap:** Refer to [`PLAN.md`](file:///d:/code/ai_resume_analyzer/PLAN.md) for the active phase and upcoming features.
-- **Engineering Principles:** Refer to [`AGENTS.md`](file:///d:/code/ai_resume_analyzer/AGENTS.md) for architectural rules, error handling, timeout guarantees, and security practices.
+- **Roadmap:** Refer to [`PLAN.md`](PLAN.md) for current status, covered features, and upcoming phases.
+- **Engineering Principles:** Refer to [`AGENTS.md`](AGENTS.md) for persistent rules, architectural boundaries, and coding standards.
