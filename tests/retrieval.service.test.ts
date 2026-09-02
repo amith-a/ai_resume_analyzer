@@ -1,8 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { retrieveChunks } from "../src/services/retrieval.service.js";
-import type { EmbeddingsClient } from "../src/services/embedding.service.js";
-import { UpstreamAIError } from "../src/errors/index.js";
 import type { DocumentChunkWithDistanceRecord } from "../src/types/document.types.js";
 
 const DEFAULT_VECTOR_DIMENSION = 768;
@@ -13,17 +11,9 @@ function createMockVector(fillValue = 0.1): number[] {
   return vec;
 }
 
-describe("Retrieval Service Unit Tests", () => {
-  it("1. orchestrates embedding generation and repository vector retrieval successfully", async () => {
+describe("Retrieval Service Unit Tests (Vector Retrieval Only)", () => {
+  it("1. passes query vector directly to repository and returns matching chunks", async () => {
     const mockVector = createMockVector(0.05);
-    let embeddedQueryText = "";
-
-    const mockEmbeddingsClient: EmbeddingsClient = {
-      embedQuery: async (text: string) => {
-        embeddedQueryText = text;
-        return mockVector;
-      },
-    };
 
     const mockChunks: DocumentChunkWithDistanceRecord[] = [
       {
@@ -73,29 +63,23 @@ describe("Retrieval Service Unit Tests", () => {
 
     const result = await retrieveChunks(
       {
-        query: "backend nodejs developer",
         documentId: "doc-123",
+        queryVector: mockVector,
         topK: 3,
         maxDistanceThreshold: 0.2,
         metadataFilter: { section: "experience" },
       },
       {
-        embeddingsClient: mockEmbeddingsClient,
         vectorRepository: mockVectorRepo,
       },
     );
 
-    // 1. Verify query passed to embedding service
-    assert.equal(embeddedQueryText, "backend nodejs developer");
-
-    // 2. Verify repository received correct parameters
     assert.equal(repoDocumentId, "doc-123");
     assert.deepEqual(repoVector, mockVector);
     assert.equal(repoTopK, 3);
     assert.equal(repoThreshold, 0.2);
     assert.deepEqual(repoMetadataFilter, { section: "experience" });
 
-    // 3. Verify retrieved chunks returned unchanged
     assert.equal(result.length, 2);
     assert.equal(result[0].id, "chunk-1");
     assert.equal(result[0].distance, 0.045);
@@ -103,13 +87,9 @@ describe("Retrieval Service Unit Tests", () => {
     assert.equal(result[1].distance, 0.12);
   });
 
-  it("2. defaults topK to 5 when topK is omitted", async () => {
+  it("2. defaults topK to 5 when omitted", async () => {
     const mockVector = createMockVector();
     let repoTopK = 0;
-
-    const mockEmbeddingsClient: EmbeddingsClient = {
-      embedQuery: async () => mockVector,
-    };
 
     const mockVectorRepo = {
       findChunksByDocumentIdOrderedBySimilarity: async (
@@ -124,46 +104,47 @@ describe("Retrieval Service Unit Tests", () => {
 
     await retrieveChunks(
       {
-        query: "find matching skills",
         documentId: "doc-456",
+        queryVector: mockVector,
       },
       {
-        embeddingsClient: mockEmbeddingsClient,
         vectorRepository: mockVectorRepo,
       },
     );
 
-    assert.equal(repoTopK, 5, "topK should default to 5 when omitted");
+    assert.equal(repoTopK, 5);
   });
 
-  it("3. rejects empty or invalid query with TypeError", async () => {
+  it("3. rejects missing or empty queryVector with TypeError", async () => {
     await assert.rejects(
       async () => {
         await retrieveChunks({
-          query: "",
           documentId: "doc-123",
+          queryVector: [] as number[],
         });
       },
-      { name: "TypeError", message: /Query must be a non-empty string/ },
+      { name: "TypeError", message: /Query vector must be a non-empty array of numbers/ },
     );
 
     await assert.rejects(
       async () => {
         await retrieveChunks({
-          query: "   ",
           documentId: "doc-123",
+          queryVector: null as unknown as number[],
         });
       },
-      { name: "TypeError", message: /Query must be a non-empty string/ },
+      { name: "TypeError", message: /Query vector must be a non-empty array of numbers/ },
     );
   });
 
-  it("4. rejects empty or invalid documentId with TypeError", async () => {
+  it("4. rejects empty or whitespace documentId with TypeError", async () => {
+    const mockVector = createMockVector();
+
     await assert.rejects(
       async () => {
         await retrieveChunks({
-          query: "find backend skills",
           documentId: "",
+          queryVector: mockVector,
         });
       },
       { name: "TypeError", message: /Document ID must be a non-empty string/ },
@@ -172,8 +153,8 @@ describe("Retrieval Service Unit Tests", () => {
     await assert.rejects(
       async () => {
         await retrieveChunks({
-          query: "find backend skills",
           documentId: "   ",
+          queryVector: mockVector,
         });
       },
       { name: "TypeError", message: /Document ID must be a non-empty string/ },
@@ -181,11 +162,13 @@ describe("Retrieval Service Unit Tests", () => {
   });
 
   it("5. rejects invalid topK values (0, negative, float, NaN) with RangeError", async () => {
+    const mockVector = createMockVector();
+
     await assert.rejects(
       async () => {
         await retrieveChunks({
-          query: "find backend skills",
           documentId: "doc-123",
+          queryVector: mockVector,
           topK: 0,
         });
       },
@@ -195,8 +178,8 @@ describe("Retrieval Service Unit Tests", () => {
     await assert.rejects(
       async () => {
         await retrieveChunks({
-          query: "find backend skills",
           documentId: "doc-123",
+          queryVector: mockVector,
           topK: -5,
         });
       },
@@ -206,8 +189,8 @@ describe("Retrieval Service Unit Tests", () => {
     await assert.rejects(
       async () => {
         await retrieveChunks({
-          query: "find backend skills",
           documentId: "doc-123",
+          queryVector: mockVector,
           topK: 2.5,
         });
       },
@@ -217,8 +200,8 @@ describe("Retrieval Service Unit Tests", () => {
     await assert.rejects(
       async () => {
         await retrieveChunks({
-          query: "find backend skills",
           documentId: "doc-123",
+          queryVector: mockVector,
           topK: NaN,
         });
       },
@@ -226,38 +209,34 @@ describe("Retrieval Service Unit Tests", () => {
     );
   });
 
-  it("6. propagates UpstreamAIError when embedding generation fails", async () => {
-    const mockEmbeddingsClient: EmbeddingsClient = {
-      embedQuery: async () => {
-        throw new Error("Ollama connection failed");
-      },
-    };
+  it("6. rejects invalid maxDistanceThreshold with RangeError", async () => {
+    const mockVector = createMockVector();
 
     await assert.rejects(
       async () => {
-        await retrieveChunks(
-          {
-            query: "query that fails",
-            documentId: "doc-123",
-          },
-          {
-            embeddingsClient: mockEmbeddingsClient,
-          },
-        );
+        await retrieveChunks({
+          documentId: "doc-123",
+          queryVector: mockVector,
+          maxDistanceThreshold: -0.1,
+        });
       },
-      (err: unknown) => {
-        assert.ok(err instanceof UpstreamAIError);
-        assert.match(err.message, /Failed to generate text embedding/);
-        return true;
+      { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ },
+    );
+
+    await assert.rejects(
+      async () => {
+        await retrieveChunks({
+          documentId: "doc-123",
+          queryVector: mockVector,
+          maxDistanceThreshold: NaN,
+        });
       },
+      { name: "RangeError", message: /maxDistanceThreshold must be a non-negative finite number/ },
     );
   });
 
   it("7. propagates repository errors directly to the caller", async () => {
     const mockVector = createMockVector();
-    const mockEmbeddingsClient: EmbeddingsClient = {
-      embedQuery: async () => mockVector,
-    };
 
     const mockVectorRepo = {
       findChunksByDocumentIdOrderedBySimilarity: async () => {
@@ -269,11 +248,10 @@ describe("Retrieval Service Unit Tests", () => {
       async () => {
         await retrieveChunks(
           {
-            query: "valid query",
             documentId: "doc-123",
+            queryVector: mockVector,
           },
           {
-            embeddingsClient: mockEmbeddingsClient,
             vectorRepository: mockVectorRepo,
           },
         );

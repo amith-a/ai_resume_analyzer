@@ -78,11 +78,11 @@ export interface StoreDocumentResult {
 }
 
 /**
- * Parameters for retrieving relevant chunks for a document given a text query.
+ * Parameters for retrieving relevant chunks for a document given a query vector.
  */
 export interface RetrieveChunksParams {
-  query: string;
   documentId: string;
+  queryVector: number[] | Float32Array;
   topK?: number;
   maxDistanceThreshold?: number;
   metadataFilter?: Record<string, unknown>;
