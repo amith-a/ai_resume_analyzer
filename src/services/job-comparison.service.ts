@@ -1,4 +1,5 @@
 import type { Runnable } from "@langchain/core/runnables";
+import { z } from "zod";
 import { env } from "../config/env.js";
 import { createStructuredOllamaModel } from "../ai/model-factory.js";
 import { jobComparisonPrompt } from "../ai/prompts/job-comparison.prompt.js";
@@ -22,7 +23,7 @@ import { handleLlmError } from "../ai/error-handler.js";
 export async function compareJobDescription(
   resumeText: string,
   jobDescription: string,
-  modelOverride?: Runnable<any, any>,
+  modelOverride?: Runnable<unknown, unknown>,
 ): Promise<JobComparisonOutput> {
   const inputValidation = JobComparisonInputSchema.safeParse({
     resumeText,
@@ -66,7 +67,7 @@ export async function compareJobDescription(
   if (!parseResult.success) {
     console.error(
       "Job comparison output failed defensive schema validation:",
-      parseResult.error.format(),
+      z.treeifyError(parseResult.error),
     );
     throw new SchemaValidationError(
       "Model output failed defensive schema validation",

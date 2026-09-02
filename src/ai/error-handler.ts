@@ -7,7 +7,7 @@ import { SchemaValidationError, UpstreamAIError } from "../errors/index.js";
  * Maps schema/parser failures to SchemaValidationError (HTTP 422)
  * and upstream network/server failures to UpstreamAIError (HTTP 502).
  */
-export function handleLlmError(error: unknown, schema: z.ZodTypeAny): never {
+export function handleLlmError(error: unknown, schema: z.ZodType): never {
   if (error instanceof z.ZodError) {
     throw new SchemaValidationError(
       "Model output failed defensive schema validation",
@@ -20,7 +20,10 @@ export function handleLlmError(error: unknown, schema: z.ZodTypeAny): never {
     (error instanceof Error && error.name === "OutputParserException")
   ) {
     let issues: z.core.$ZodIssue[] = [];
-    const rawOutput = (error as any).llmOutput;
+    const rawOutput =
+      typeof error === "object" && error !== null && "llmOutput" in error
+        ? (error as { llmOutput?: unknown }).llmOutput
+        : undefined;
 
     if (typeof rawOutput === "string") {
       try {

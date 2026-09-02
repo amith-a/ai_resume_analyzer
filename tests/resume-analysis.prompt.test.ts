@@ -9,8 +9,8 @@ describe("resumeAnalysisPrompt", () => {
     });
 
     assert.equal(messages.length, 2);
-    assert.equal(messages[0]._getType(), "system");
-    assert.equal(messages[1]._getType(), "human");
+    assert.equal(messages[0].type, "system");
+    assert.equal(messages[1].type, "human");
   });
 
   it("2. inserts dynamic resumeText into the human message", async () => {

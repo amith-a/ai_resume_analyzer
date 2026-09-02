@@ -2,7 +2,7 @@ import { ChatOllama, OllamaEmbeddings } from "@langchain/ollama";
 import type { z } from "zod";
 import { env } from "../config/env.js";
 
-export function createStructuredOllamaModel<T extends z.ZodTypeAny>(schema: T) {
+export function createStructuredOllamaModel<T extends z.ZodType>(schema: T) {
   return new ChatOllama({
     model: env.OLLAMA_MODEL,
     baseUrl: env.OLLAMA_HOST,

@@ -13,8 +13,8 @@ describe("jobComparisonPrompt", () => {
     const messages = await jobComparisonPrompt.formatMessages(sampleInput);
 
     assert.equal(messages.length, 2);
-    assert.equal(messages[0]._getType(), "system");
-    assert.equal(messages[1]._getType(), "human");
+    assert.equal(messages[0].type, "system");
+    assert.equal(messages[1].type, "human");
   });
 
   it("2. inserts dynamic resumeText and jobDescription into the human message", async () => {

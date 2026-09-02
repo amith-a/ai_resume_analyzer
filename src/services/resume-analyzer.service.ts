@@ -1,4 +1,5 @@
 import type { Runnable } from "@langchain/core/runnables";
+import { z } from "zod";
 import { env } from "../config/env.js";
 import { createStructuredOllamaModel } from "../ai/model-factory.js";
 import { resumeAnalysisPrompt } from "../ai/prompts/resume-analysis.prompt.js";
@@ -16,7 +17,7 @@ import { handleLlmError } from "../ai/error-handler.js";
  */
 export async function analyzeResume(
   resumeText: string,
-  modelOverride?: Runnable<any, any>,
+  modelOverride?: Runnable<unknown, unknown>,
 ): Promise<ResumeAnalysis> {
   if (!resumeText || typeof resumeText !== "string" || resumeText.trim().length === 0) {
     throw new TypeError("Resume text must be a non-empty string");
@@ -47,7 +48,7 @@ export async function analyzeResume(
   if (!parseResult.success) {
     console.error(
       "Resume analysis output failed defensive schema validation:",
-      parseResult.error.format(),
+      z.treeifyError(parseResult.error),
     );
     throw new SchemaValidationError(
       "Model output failed defensive schema validation",

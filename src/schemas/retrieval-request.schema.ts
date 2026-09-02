@@ -19,7 +19,6 @@ export const RetrieveChunksRequestSchema = z.object({
     .optional(),
   maxDistanceThreshold: z
     .number({ message: "maxDistanceThreshold must be a non-negative finite number" })
-    .finite("maxDistanceThreshold must be a non-negative finite number")
     .nonnegative("maxDistanceThreshold must be a non-negative finite number")
     .optional(),
   metadataFilter: z

@@ -68,7 +68,7 @@ describe("Validation Middleware Unit Tests", () => {
   });
 
   it("3. validateRequest validates params correctly", () => {
-    const paramsSchema = z.object({ id: z.string().uuid("Invalid UUID format") });
+    const paramsSchema = z.object({ id: z.uuid("Invalid UUID format") });
     const middleware = validateRequest({ params: paramsSchema });
 
     // Invalid UUID
