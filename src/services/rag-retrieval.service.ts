@@ -12,9 +12,7 @@ export interface RagRetrievalParams {
 
 export interface RagRetrievalServiceOptions {
   embeddingsClient?: EmbeddingsClient;
-  retrievalService?: {
-    retrieveChunks: typeof retrieveChunks;
-  };
+  retrieveChunks?: typeof retrieveChunks;
 }
 
 export async function orchestrateRagRetrieval(
@@ -22,7 +20,7 @@ export async function orchestrateRagRetrieval(
   options?: RagRetrievalServiceOptions,
 ): Promise<DocumentChunkWithDistanceRecord[]> {
   const queryVector = await embedText(params.query, options?.embeddingsClient);
-  const retrieveFn = options?.retrievalService?.retrieveChunks ?? retrieveChunks;
+  const retrieveFn = options?.retrieveChunks ?? retrieveChunks;
 
   return retrieveFn({
     documentId: params.documentId,
@@ -32,7 +30,3 @@ export async function orchestrateRagRetrieval(
     metadataFilter: params.metadataFilter,
   });
 }
-
-export const ragRetrievalService = {
-  orchestrateRagRetrieval,
-};

@@ -1,6 +1,5 @@
 import type { Request, Response } from "express";
-import { embedText } from "../services/embedding.service.js";
-import { retrievalService } from "../services/retrieval.service.js";
+import { orchestrateRagRetrieval } from "../services/rag-retrieval.service.js";
 import type { RetrieveChunksRequestInput } from "../schemas/retrieval-request.schema.js";
 
 export async function retrieveChunksHandler(
@@ -9,11 +8,9 @@ export async function retrieveChunksHandler(
 ): Promise<void> {
   const { query, documentId, topK, maxDistanceThreshold, metadataFilter } = req.body;
 
-  const queryVector = await embedText(query);
-
-  const chunks = await retrievalService.retrieveChunks({
+  const chunks = await orchestrateRagRetrieval({
+    query,
     documentId,
-    queryVector,
     topK,
     maxDistanceThreshold,
     metadataFilter,

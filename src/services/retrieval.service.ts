@@ -58,7 +58,7 @@ export async function retrieveChunks(
 
   const queryable = options?.queryable ?? pool;
 
-  const chunks = await repositoryFn(
+  return repositoryFn(
     params.documentId.trim(),
     params.queryVector,
     topK,
@@ -66,10 +66,4 @@ export async function retrieveChunks(
     params.metadataFilter,
     queryable,
   );
-
-  return chunks;
 }
-
-export const retrievalService = {
-  retrieveChunks,
-};

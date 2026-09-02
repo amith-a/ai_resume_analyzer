@@ -1,10 +1,11 @@
-import { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import {
   InvalidFileTypeError,
   DocumentExtractionError,
   SchemaValidationError,
   UpstreamAIError,
+  FileUploadError,
 } from "../errors/index.js";
 
 /**
@@ -17,6 +18,14 @@ export function errorHandlerMiddleware(
   res: Response,
   _next: NextFunction,
 ): void {
+  if (err instanceof FileUploadError) {
+    res.status(400).json({
+      status: "error",
+      message: err.message,
+    });
+    return;
+  }
+
   if (err instanceof InvalidFileTypeError) {
     res.status(415).json({
       status: "error",

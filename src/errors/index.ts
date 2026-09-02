@@ -63,3 +63,14 @@ export class DocumentNotFoundError extends Error {
     this.name = "DocumentNotFoundError";
   }
 }
+
+/**
+ * Thrown when an uploaded file is missing or rejected during upload processing.
+ * HTTP Mapping: 400 Bad Request
+ */
+export class FileUploadError extends Error {
+  constructor(message: string = "No resume file provided") {
+    super(message);
+    this.name = "FileUploadError";
+  }
+}

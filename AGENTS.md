@@ -604,18 +604,18 @@ Test:
 Do not rely exclusively on manually inspecting LLM output.
 
 ---
-
 # 26. Code Quality
 
 Prefer:
 
-- small functions
-- clear names
+- small, focused functions
+- clear and descriptive names
 - explicit types
 - single responsibility
-- dependency injection where it actually helps
-- reusable services
+- dependency injection where it provides a real benefit
+- reusable services and utilities where responsibilities are genuinely shared
 - minimal coupling
+- simple solutions that fit the existing architecture
 
 Avoid:
 
@@ -624,9 +624,278 @@ Avoid:
 - hidden global state
 - duplicated logic
 - unnecessary abstractions
+- premature optimization
 - premature design patterns
+- introducing a design pattern merely to demonstrate the pattern
 
-Do not introduce a design pattern simply to demonstrate the pattern.
+## Production Code Should Not Be Shaped Around Tests
+
+Production code should be designed around its responsibilities, dependencies,
+and application requirements—not around the limitations or convenience of a
+particular test framework or mocking API.
+
+When tests need to replace or observe behavior, prefer appropriate test seams
+such as:
+
+- dependency injection
+- function parameters
+- options objects
+- interfaces
+- constructor dependencies
+
+Do not introduce production-only structures, wrappers, alternate exports,
+mutable indirection, or abstractions solely to make a test easier to write.
+
+Before changing production code to accommodate a test:
+
+1. Check whether the dependency can be injected instead.
+2. Check whether an existing test seam can be reused.
+3. Change the production design only when there is a genuine application or
+   architectural reason.
+
+Tests should adapt to reasonable production boundaries rather than dictate them.
+
+# 26.1 Coding Style and Consistency Rules
+
+These rules prevent a common failure mode: individual files being well-written
+in isolation while the codebase gradually develops inconsistent patterns.
+
+Apply these rules whenever adding or modifying code.
+
+## 1. Avoid `any`
+
+Do not use `any` as a convenience or escape hatch.
+
+Prefer:
+
+- explicit types
+- `unknown` with runtime narrowing
+- existing project types
+- appropriate generic types
+
+If `any` is genuinely unavoidable at a boundary, such as an incomplete
+third-party type, add a short comment explaining why.
+
+An undocumented `any` should be treated as unfinished work.
+
+Do not weaken type safety simply to make an implementation easier.
+
+---
+
+## 2. Follow Established Module Conventions
+
+When adding or modifying a module, follow the conventions already established
+for that type of module.
+
+For example, if services generally use named function exports, do not introduce
+an object wrapper, default export, class, or namespace for a single service
+without a concrete architectural reason.
+
+Before introducing a different pattern:
+
+1. Check how sibling modules are implemented.
+2. Determine whether the difference is actually necessary.
+3. Prefer an existing dependency-injection or test seam when one already solves
+   the problem.
+4. If a different pattern is genuinely required, consider whether it should
+   become a broader project convention rather than a one-off exception.
+
+Do not refactor unrelated modules solely to make their style identical.
+
+---
+
+## 3. Do Not Shape Production Code Around Tests
+
+Production architecture should be driven by responsibilities and dependencies,
+not by the convenience or limitations of a particular test API.
+
+When tests need to replace behavior, prefer an explicit seam such as:
+
+- a function parameter
+- an options object
+- a dependency-injected interface
+- a constructor parameter
+
+Do not change production exports or architecture solely so a mocking API can
+attach to a particular function or object.
+
+Tests should work with reasonable production boundaries, not dictate them.
+
+---
+
+## 4. Avoid Introducing Duplicate Logic
+
+Before adding non-trivial logic, search the existing codebase for similar
+implementations.
+
+If the same logic already exists, reuse the existing implementation when
+appropriate.
+
+If a new implementation would create a third copy of the same meaningful
+logic, extract an appropriate shared helper or service before adding it.
+
+Common examples include:
+
+- validation
+- error mapping
+- retry handling
+- timeout handling
+- logging wrappers
+- data transformation
+- common parsing logic
+
+Do not create abstractions merely because two small pieces of code look similar.
+Extract shared logic when the responsibility and behavior are genuinely common.
+
+---
+
+## 5. Apply Safety Patterns Consistently
+
+When the project establishes a safety requirement for a category of operation,
+apply it consistently to new and modified code.
+
+Examples include:
+
+- timeouts for external/network operations
+- validation for untrusted input
+- schema validation for LLM output
+- bounded retries for retryable operations
+- centralized error handling
+
+When adding a new operation of the same category, check the existing safety
+pattern before implementing it.
+
+A deviation is acceptable when there is a clear technical reason, but it should
+be intentional rather than accidental.
+
+---
+
+## 6. Audit Before Declaring a Pattern Is Isolated
+
+When identifying a consistency problem, search the relevant scope of the
+codebase before deciding that it exists in only one file.
+
+For example, when investigating:
+
+- `any`
+- export conventions
+- duplicated logic
+- timeout handling
+- error handling
+- dependency injection
+
+check the relevant sibling modules first.
+
+Do not fix one occurrence while knowingly introducing the same inconsistent
+pattern elsewhere.
+
+However, do not automatically perform a project-wide refactor during an
+unrelated feature.
+
+---
+
+## 7. Keep Refactors Scoped
+
+When a consistency issue is discovered:
+
+- fix it when it is directly related to the current change
+- avoid unrelated cleanup
+- preserve existing behavior
+- avoid changing public contracts unnecessarily
+
+If resolving the issue requires a broad project-wide change, identify the scope
+and propose it as a separate change rather than silently expanding the current
+task.
+
+---
+
+## 8. Verify Changes That Affect Contracts
+
+Whenever a change affects:
+
+- types
+- exports
+- function signatures
+- service interfaces
+- repository contracts
+- API contracts
+- dependency injection
+- shared utilities
+
+verify the downstream callers.
+
+Run the appropriate:
+
+- type checking
+- tests
+- build
+- lint
+- integration tests where applicable
+
+Do not consider a change complete merely because the modified file looks correct.
+
+---
+
+## 9. Prefer Existing Patterns Before Creating New Ones
+
+Before introducing a new abstraction, helper, pattern, or dependency:
+
+1. Search the codebase for an existing solution.
+2. Check whether the existing solution can reasonably be reused.
+3. Prefer the simplest approach that fits the existing architecture.
+
+Do not introduce a new pattern merely because it is theoretically cleaner.
+
+The goal is a coherent codebase, not maximum abstraction.
+
+---
+
+## 10. Consistency Must Not Override Good Architecture
+
+Consistency is a guideline, not a reason to preserve a bad design.
+
+A different pattern may be appropriate when:
+
+- the responsibility is genuinely different
+- the existing pattern does not fit
+- a framework or library requires a different boundary
+- there is a clear architectural benefit
+
+When introducing such a deviation, keep it intentional and document the reason
+when the reason would not be obvious from the code.
+
+---
+
+## 11. Existing Code vs. New Code
+
+These rules primarily govern new code and code being actively modified.
+
+Do not perform large-scale style rewrites simply because older code does not
+follow the preferred convention.
+
+When modifying an existing file:
+
+1. Preserve working behavior.
+2. Follow the established convention where practical.
+3. Fix directly relevant inconsistencies when doing so is low-risk.
+4. Avoid unrelated cleanup unless explicitly requested.
+
+---
+
+## 12. Project-Wide Convention Changes
+
+If applying a consistency rule would require changing many files, do not silently
+bundle that change into a feature implementation.
+
+First:
+
+1. Identify the affected scope.
+2. Explain the proposed convention.
+3. Explain why the change is beneficial.
+4. Get approval before performing a broad refactor.
+
+This prevents a small feature from unexpectedly becoming a project-wide
+architecture change.
 
 ---
 

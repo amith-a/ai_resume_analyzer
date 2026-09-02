@@ -16,7 +16,7 @@ function createMockVector(fillValue = 0.1): number[] {
   return vec;
 }
 
-describe("RAG Retrieval Orchestration Service Unit Tests (Phase 12 — Block 1)", () => {
+describe("RAG Retrieval Orchestration Service Unit Tests", () => {
   it("1. Query → Embedding → Retrieval: generates query embedding and passes vector to retrieval service", async () => {
     const mockVector = createMockVector(0.05);
     const mockChunks: DocumentChunkWithDistanceRecord[] = [
@@ -38,11 +38,9 @@ describe("RAG Retrieval Orchestration Service Unit Tests (Phase 12 — Block 1)"
       embedQuery: async () => mockVector,
     };
 
-    const mockRetrievalService = {
-      retrieveChunks: async (params: RetrieveChunksParams) => {
-        passedParams = params;
-        return mockChunks;
-      },
+    const mockRetrieveChunks = async (params: RetrieveChunksParams) => {
+      passedParams = params;
+      return mockChunks;
     };
 
     const result = await orchestrateRagRetrieval(
@@ -52,7 +50,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests (Phase 12 — Block 1)"
       },
       {
         embeddingsClient: mockEmbeddingsClient,
-        retrievalService: mockRetrievalService,
+        retrieveChunks: mockRetrieveChunks,
       },
     );
 
@@ -71,11 +69,9 @@ describe("RAG Retrieval Orchestration Service Unit Tests (Phase 12 — Block 1)"
       embedQuery: async () => mockVector,
     };
 
-    const mockRetrievalService = {
-      retrieveChunks: async (params: RetrieveChunksParams) => {
-        passedParams = params;
-        return [];
-      },
+    const mockRetrieveChunks = async (params: RetrieveChunksParams) => {
+      passedParams = params;
+      return [];
     };
 
     const filterObj = { section: "projects", tech: "AWS" };
@@ -90,7 +86,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests (Phase 12 — Block 1)"
       },
       {
         embeddingsClient: mockEmbeddingsClient,
-        retrievalService: mockRetrievalService,
+        retrieveChunks: mockRetrieveChunks,
       },
     );
 
@@ -136,10 +132,8 @@ describe("RAG Retrieval Orchestration Service Unit Tests (Phase 12 — Block 1)"
       embedQuery: async () => mockVector,
     };
 
-    const mockRetrievalService = {
-      retrieveChunks: async () => {
-        throw new Error("Retrieval failed: connection reset");
-      },
+    const mockRetrieveChunks = async () => {
+      throw new Error("Retrieval failed: connection reset");
     };
 
     await assert.rejects(
@@ -151,7 +145,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests (Phase 12 — Block 1)"
           },
           {
             embeddingsClient: mockEmbeddingsClient,
-            retrievalService: mockRetrievalService,
+            retrieveChunks: mockRetrieveChunks,
           },
         );
       },

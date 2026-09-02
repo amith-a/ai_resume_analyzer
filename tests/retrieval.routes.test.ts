@@ -2,11 +2,7 @@ import { describe, it, before, after, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import type { Server } from "node:http";
 import { app } from "../src/app.js";
-import { retrievalService } from "../src/services/retrieval.service.js";
-import type {
-  DocumentChunkWithDistanceRecord,
-  RetrieveChunksParams,
-} from "../src/types/document.types.js";
+import { pool } from "../src/config/db.js";
 
 const DEFAULT_VECTOR_DIMENSION = 768;
 const mockVector = new Array(DEFAULT_VECTOR_DIMENSION).fill(0.05);
@@ -14,10 +10,10 @@ const mockVector = new Array(DEFAULT_VECTOR_DIMENSION).fill(0.05);
 describe("POST /retrieval/chunks API Route Tests", () => {
   let server: Server;
   let baseUrl: string;
-  let capturedParams: RetrieveChunksParams | null = null;
-  let mockResult: DocumentChunkWithDistanceRecord[] = [];
-  let shouldThrow: Error | null = null;
   let shouldOllamaFail = false;
+  let capturedQueryText = "";
+  let capturedQueryParams: unknown[] = [];
+  let mockDbRows: unknown[] = [];
   const originalFetch = globalThis.fetch;
 
   before(async () => {
@@ -43,12 +39,13 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       return originalFetch(input, init);
     });
 
-    mock.method(retrievalService, "retrieveChunks", async (params: RetrieveChunksParams) => {
-      capturedParams = params;
-      if (shouldThrow) {
-        throw shouldThrow;
-      }
-      return mockResult;
+    mock.method(pool, "query", async (sql: string, params?: unknown[]) => {
+      capturedQueryText = sql;
+      capturedQueryParams = params ?? [];
+      return {
+        rows: mockDbRows,
+        rowCount: mockDbRows.length,
+      };
     });
 
     await new Promise<void>((resolve) => {
@@ -69,23 +66,23 @@ describe("POST /retrieval/chunks API Route Tests", () => {
   });
 
   beforeEach(() => {
-    capturedParams = null;
-    mockResult = [];
-    shouldThrow = null;
     shouldOllamaFail = false;
+    capturedQueryText = "";
+    capturedQueryParams = [];
+    mockDbRows = [];
   });
 
   it("1. returns 200 OK and retrieved chunks for a valid request with all parameters", async () => {
-    mockResult = [
+    mockDbRows = [
       {
         id: "chunk-1",
         document_id: "doc-123",
         chunk_index: 0,
         content: "Senior Backend Developer with AWS",
         metadata: { section: "experience" },
-        embedding: null,
-        distance: 0.08,
-        created_at: new Date(),
+        embedding: `[${mockVector.join(",")}]`,
+        distance: "0.08",
+        created_at: new Date().toISOString(),
       },
     ];
 
@@ -102,20 +99,19 @@ describe("POST /retrieval/chunks API Route Tests", () => {
     });
 
     assert.equal(response.status, 200);
-    const body = (await response.json()) as { chunks: unknown[] };
+    const body = (await response.json()) as { chunks: Array<{ id: string; distance: number }> };
     assert.ok(Array.isArray(body.chunks));
     assert.equal(body.chunks.length, 1);
+    assert.equal(body.chunks[0].id, "chunk-1");
+    assert.equal(body.chunks[0].distance, 0.08);
 
-    assert.ok(capturedParams);
-    assert.equal(capturedParams.documentId, "doc-123");
-    assert.deepEqual(capturedParams.queryVector, mockVector);
-    assert.equal(capturedParams.topK, 3);
-    assert.equal(capturedParams.maxDistanceThreshold, 0.4);
-    assert.deepEqual(capturedParams.metadataFilter, { section: "experience" });
+    assert.ok(capturedQueryText.includes("FROM document_chunks"));
+    assert.equal(capturedQueryParams[0], "doc-123");
+    assert.equal(capturedQueryParams[2], 3);
   });
 
   it("2. returns 200 OK for minimal valid payload (query and documentId)", async () => {
-    mockResult = [];
+    mockDbRows = [];
 
     const response = await fetch(`${baseUrl}/retrieval/chunks`, {
       method: "POST",
@@ -129,13 +125,8 @@ describe("POST /retrieval/chunks API Route Tests", () => {
     assert.equal(response.status, 200);
     const body = (await response.json()) as { chunks: unknown[] };
     assert.deepEqual(body.chunks, []);
-
-    assert.ok(capturedParams);
-    assert.equal(capturedParams.documentId, "doc-456");
-    assert.deepEqual(capturedParams.queryVector, mockVector);
-    assert.equal(capturedParams.topK, undefined);
-    assert.equal(capturedParams.maxDistanceThreshold, undefined);
-    assert.equal(capturedParams.metadataFilter, undefined);
+    assert.equal(capturedQueryParams[0], "doc-456");
+    assert.equal(capturedQueryParams[2], 5); // default topK
   });
 
   it("3. returns 400 Bad Request when query is missing or empty", async () => {

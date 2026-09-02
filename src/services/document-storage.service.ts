@@ -12,14 +12,12 @@ import {
 import type {
   DocumentRecord,
   DocumentChunkRecord,
+  CreateDocumentParams,
   CreateChunkParams,
   StoreDocumentWithChunksParams,
   StoreDocumentResult,
 } from "../types/document.types.js";
 
-/**
- * Service: Retrieves a single document by UUID from repository.
- */
 export async function getDocumentById(
   id: string,
   queryable: pg.Pool | pg.PoolClient = pool,
@@ -27,9 +25,6 @@ export async function getDocumentById(
   return findDocumentById(id, queryable);
 }
 
-/**
- * Service: Retrieves all chunks for a given document from repository.
- */
 export async function getDocumentChunks(
   documentId: string,
   queryable: pg.Pool | pg.PoolClient = pool,
@@ -37,9 +32,6 @@ export async function getDocumentChunks(
   return findDocumentChunksByDocumentId(documentId, queryable);
 }
 
-/**
- * Service: Deletes a document by ID via repository.
- */
 export async function deleteDocument(
   id: string,
   queryable: pg.Pool | pg.PoolClient = pool,
@@ -47,18 +39,47 @@ export async function deleteDocument(
   return deleteDocumentById(id, queryable);
 }
 
-/**
- * Service Orchestration: End-to-end pipeline to chunk, embed, and store a document with vectors.
- *
- * 1. Validates text input.
- * 2. Chunks the text using `chunkText()`.
- * 3. Generates 768-dim vector embeddings for all chunks via `embedChunks()`.
- * 4. Executes an atomic PostgreSQL transaction using `insertDocument()` and `insertDocumentChunks()`.
- *
- * @param params - Document content and metadata parameters.
- * @param options - Optional custom embeddings client test seam or custom database pool.
- * @returns Promise<StoreDocumentResult> - Combined document and chunks result.
- */
+export async function saveDocumentWithChunks(
+  docParams: CreateDocumentParams,
+  chunkContents: Array<{ chunkIndex: number; content: string; embedding: number[] | null }>,
+  activePool: pg.Pool = pool,
+): Promise<StoreDocumentResult> {
+  const client = await activePool.connect();
+
+  try {
+    await client.query("BEGIN;");
+
+    const document = await insertDocument(docParams, client);
+
+    const chunkParams: CreateChunkParams[] = chunkContents.map((c) => ({
+      document_id: document.id,
+      chunk_index: c.chunkIndex,
+      content: c.content,
+      metadata: {
+        ...(docParams.metadata ?? {}),
+        chunk_index: c.chunkIndex,
+      },
+      embedding: c.embedding,
+    }));
+
+    const storedChunks = await insertDocumentChunks(chunkParams, client);
+
+    await client.query("COMMIT;");
+
+    return {
+      document,
+      chunks: storedChunks,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK;").catch((rollbackErr) => {
+      console.error("Failed to rollback transaction in saveDocumentWithChunks:", rollbackErr);
+    });
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function storeDocumentWithChunks(
   params: StoreDocumentWithChunksParams,
   options?: {
@@ -74,62 +95,29 @@ export async function storeDocumentWithChunks(
     throw new TypeError("Raw text must be a non-empty string");
   }
 
-  // 1. Split text into chunks
   const chunks = chunkText(params.raw_text, params.chunkOptions);
   if (chunks.length === 0) {
     throw new Error("Text chunking produced zero chunks from input text");
   }
 
-  // 2. Generate embeddings for all chunks in batch
   const chunkTexts = chunks.map((c) => c.content);
   const embeddings = await embedChunks(chunkTexts, options?.embeddingsClient);
 
-  // 3. Connect to database and execute transaction through repository
-  const activePool = options?.pool ?? pool;
-  const client = await activePool.connect();
+  const chunkContents = chunks.map((c, index) => ({
+    chunkIndex: c.chunkIndex,
+    content: c.content,
+    embedding: embeddings[index],
+  }));
 
-  try {
-    await client.query("BEGIN;");
-
-    // Insert parent document
-    const document = await insertDocument(
-      {
-        title: params.title,
-        document_type: params.document_type,
-        file_path: params.file_path,
-        raw_text: params.raw_text,
-        metadata: params.metadata,
-      },
-      client,
-    );
-
-    // Prepare chunk parameters with embeddings
-    const chunkParams: CreateChunkParams[] = chunks.map((c, index) => ({
-      document_id: document.id,
-      chunk_index: c.chunkIndex,
-      content: c.content,
-      metadata: {
-        ...(params.metadata ?? {}),
-        chunk_index: c.chunkIndex,
-      },
-      embedding: embeddings[index],
-    }));
-
-    // Insert chunks via repository
-    const storedChunks = await insertDocumentChunks(chunkParams, client);
-
-    await client.query("COMMIT;");
-
-    return {
-      document,
-      chunks: storedChunks,
-    };
-  } catch (error) {
-    await client.query("ROLLBACK;").catch((rollbackErr) => {
-      console.error("Failed to rollback transaction in storeDocumentWithChunks:", rollbackErr);
-    });
-    throw error;
-  } finally {
-    client.release();
-  }
+  return saveDocumentWithChunks(
+    {
+      title: params.title,
+      document_type: params.document_type,
+      file_path: params.file_path,
+      raw_text: params.raw_text,
+      metadata: params.metadata,
+    },
+    chunkContents,
+    options?.pool ?? pool,
+  );
 }
