@@ -4,8 +4,18 @@ import { env } from "../config/env.js";
 import { createStructuredOllamaModel } from "../ai/model-factory.js";
 import { resumeAnalysisPrompt } from "../ai/prompts/resume-analysis.prompt.js";
 import { ResumeAnalysis, ResumeAnalysisSchema } from "../ai/schemas/resume-analysis.schema.js";
-import { SchemaValidationError } from "../errors/index.js";
+import { findDocumentById } from "../repositories/document.repository.js";
+import {
+  DocumentNotFoundError,
+  DocumentExtractionError,
+  SchemaValidationError,
+} from "../errors/index.js";
 import { handleLlmError } from "../ai/error-handler.js";
+
+export interface AnalyzeStoredResumeOptions {
+  modelOverride?: Runnable<unknown, unknown>;
+  documentFinder?: typeof findDocumentById;
+}
 
 /**
  * Analyzes normalized resume text using the LLM and validates
@@ -57,4 +67,40 @@ export async function analyzeResume(
   }
 
   return parseResult.data;
+}
+
+/**
+ * Analyzes an already-indexed resume document by its document ID.
+ * Retrieves the stored raw_text from the database and passes it to analyzeResume.
+ *
+ * @param documentId - The UUID/identifier of the indexed document.
+ * @param options - Optional configuration (e.g. mock modelOverride or documentFinder test seam).
+ * @returns Promise<ResumeAnalysis> - Type-safe, validated resume analysis object.
+ */
+export async function analyzeStoredResume(
+  documentId: string,
+  options?: AnalyzeStoredResumeOptions,
+): Promise<ResumeAnalysis> {
+  if (!documentId || typeof documentId !== "string" || documentId.trim().length === 0) {
+    throw new TypeError("Document ID must be a non-empty string");
+  }
+
+  const finder = options?.documentFinder ?? findDocumentById;
+  const document = await finder(documentId.trim());
+
+  if (!document) {
+    throw new DocumentNotFoundError(`Document with ID "${documentId}" not found`);
+  }
+
+  if (
+    !document.raw_text ||
+    typeof document.raw_text !== "string" ||
+    document.raw_text.trim().length === 0
+  ) {
+    throw new DocumentExtractionError(
+      `Document with ID "${documentId}" has no extracted text to analyze`,
+    );
+  }
+
+  return analyzeResume(document.raw_text, options?.modelOverride);
 }

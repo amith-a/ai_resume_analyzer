@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { ingestResumeDocument } from "../services/resume-ingest.service.js";
 import { storeDocumentWithChunks } from "../services/document-storage.service.js";
-import { analyzeResume } from "../services/resume-analyzer.service.js";
+import { analyzeStoredResume } from "../services/resume-analyzer.service.js";
 import { orchestrateRagRetrieval } from "../services/rag-retrieval.service.js";
 import { limitContextChunks } from "../utils/context-limiter.util.js";
 import { constructContext } from "../utils/context-builder.util.js";
@@ -9,6 +9,7 @@ import { generateRagAnswer } from "../services/rag-generation.service.js";
 import { produceGroundedAnswer } from "../services/grounded-answer.service.js";
 import { trackSources } from "../services/source-tracker.service.js";
 import type { AskResumeParams, AskResumeBody } from "../schemas/ask-resume-request.schema.js";
+import type { AnalyzeResumeRequestInput } from "../schemas/analyze-resume-request.schema.js";
 
 /**
  * Controller: Handles POST /resumes - Ingests, extracts, normalizes, and indexes resume with chunks & embeddings.
@@ -49,12 +50,15 @@ export async function extractResumeHandler(req: Request, res: Response): Promise
 }
 
 /**
- * Controller: Handles POST /resumes/analyze - Ingests, normalizes, and performs structured profile extraction with LLM.
+ * Controller: Handles POST /resumes/analyze - Performs structured profile extraction on an already-indexed resume.
  * Note: Express 5 natively catches unhandled async rejections and forwards them to errorHandlerMiddleware.
  */
-export async function analyzeResumeHandler(req: Request, res: Response): Promise<void> {
-  const doc = await ingestResumeDocument(req.file!.buffer);
-  const analysis = await analyzeResume(doc.normalizedText);
+export async function analyzeResumeHandler(
+  req: Request<unknown, unknown, AnalyzeResumeRequestInput>,
+  res: Response,
+): Promise<void> {
+  const { documentId } = req.body;
+  const analysis = await analyzeStoredResume(documentId);
 
   res.status(200).json({
     status: "success",

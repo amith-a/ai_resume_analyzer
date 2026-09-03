@@ -2,6 +2,7 @@ import { describe, it, before, after, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import type { Server } from "node:http";
 import { app } from "../src/app.js";
+import { pool } from "../src/config/db.js";
 import type { ResumeAnalysis } from "../src/ai/schemas/resume-analysis.schema.js";
 
 const mockValidAnalysis: ResumeAnalysis = {
@@ -38,14 +39,18 @@ const mockValidAnalysis: ResumeAnalysis = {
   missingOrUnclear: [],
 };
 
-const samplePdfBuffer = Buffer.from(
-  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 55 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Jane Doe - Lead Engineer) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000201 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n307\n%%EOF",
-);
+const mockStoredDocument = {
+  id: "valid-doc-123",
+  title: "resume.pdf",
+  file_path: null,
+  document_type: "resume",
+  raw_text: "Jane Doe - Lead Engineer with 10 years experience in distributed systems.",
+  metadata: { filename: "resume.pdf" },
+  created_at: new Date(),
+  updated_at: new Date(),
+};
 
-const corruptedPdfBuffer = Buffer.from("%PDF-1.4\nCORRUPTED_BINARY_STREAM_NO_XREF\n%%EOF");
-const spoofedPngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-
-describe("POST /resumes/analyze Structured Analysis Integration Tests", () => {
+describe("POST /resumes/analyze Structured Analysis Integration Tests (JSON documentId Contract)", () => {
   let server: Server;
   let baseUrl: string;
   let capturedNormalizedText: string | null = null;
@@ -54,6 +59,7 @@ describe("POST /resumes/analyze Structured Analysis Integration Tests", () => {
   const originalFetch = globalThis.fetch;
 
   before(async () => {
+    // Intercept LLM calls to local Ollama
     mock.method(globalThis, "fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 
@@ -77,6 +83,27 @@ describe("POST /resumes/analyze Structured Analysis Integration Tests", () => {
       }
 
       return originalFetch(input, init);
+    });
+
+    // Mock database queries to findDocumentById
+    mock.method(pool, "query", async (sql: string, params?: unknown[]) => {
+      if (sql.includes("FROM documents")) {
+        const docId = params?.[0];
+        if (docId === "valid-doc-123") {
+          return {
+            rows: [mockStoredDocument],
+            rowCount: 1,
+          };
+        }
+        if (docId === "empty-text-doc") {
+          return {
+            rows: [{ ...mockStoredDocument, id: "empty-text-doc", raw_text: "" }],
+            rowCount: 1,
+          };
+        }
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
     });
 
     await new Promise<void>((resolve) => {
@@ -116,95 +143,112 @@ describe("POST /resumes/analyze Structured Analysis Integration Tests", () => {
       );
   });
 
-  it("1. returns 200 OK with structured ResumeAnalysis on valid resume upload", async () => {
-    const formData = new FormData();
-    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
-
+  it("1. returns 200 OK with structured ResumeAnalysis on valid documentId", async () => {
     const res = await fetch(`${baseUrl}/resumes/analyze`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: "valid-doc-123" }),
     });
 
     assert.equal(res.status, 200);
-    const json = (await res.json()) as { status: string; data: ResumeAnalysis };
+    const json = (await res.json()) as { status: string; message: string; data: ResumeAnalysis };
     assert.equal(json.status, "success");
+    assert.equal(json.message, "Resume analyzed successfully");
     assert.deepEqual(json.data, mockValidAnalysis);
   });
 
-  it("2. passes normalized resume text (not raw unnormalized text) to analyzeResume()", async () => {
-    const formData = new FormData();
-    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
-
+  it("2. passes stored resume text from database to LLM prompt without re-extracting", async () => {
     const res = await fetch(`${baseUrl}/resumes/analyze`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: "valid-doc-123" }),
     });
 
     assert.equal(res.status, 200);
-    assert.ok(capturedNormalizedText !== null, "analyzeResume must receive normalized text");
-    assert.ok(capturedNormalizedText.includes("Jane Doe - Lead Engineer"));
-    assert.equal(capturedNormalizedText.trim(), capturedNormalizedText);
+    assert.ok(capturedNormalizedText !== null, "LLM must receive text from stored document");
+    assert.ok(
+      capturedNormalizedText.includes("Jane Doe - Lead Engineer with 10 years experience"),
+      "Must match stored raw_text",
+    );
   });
 
-  it("3. returns 400 Bad Request when no file is uploaded", async () => {
+  it("3. returns 400 Bad Request when documentId is missing from request body", async () => {
     const res = await fetch(`${baseUrl}/resumes/analyze`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    assert.equal(res.status, 400);
+    const json = (await res.json()) as { status: string; message: string; issues: unknown[] };
+    assert.equal(json.status, "error");
+    assert.ok(json.message.includes("Document ID must be a non-empty string"));
+    assert.ok(Array.isArray(json.issues));
+  });
+
+  it("4. returns 400 Bad Request when documentId is empty or whitespace-only", async () => {
+    const resEmpty = await fetch(`${baseUrl}/resumes/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: "" }),
+    });
+    assert.equal(resEmpty.status, 400);
+
+    const resWhitespace = await fetch(`${baseUrl}/resumes/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: "    " }),
+    });
+    assert.equal(resWhitespace.status, 400);
+  });
+
+  it("5. returns 400 Bad Request when documentId is not a string", async () => {
+    const res = await fetch(`${baseUrl}/resumes/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: 12345 }),
     });
 
     assert.equal(res.status, 400);
     const json = (await res.json()) as { status: string; message: string };
     assert.equal(json.status, "error");
-    assert.equal(json.message, "No resume file provided");
   });
 
-  it("4. returns 415 Unsupported Media Type for unsupported or spoofed files", async () => {
-    const formData = new FormData();
-    formData.append("file", new Blob([spoofedPngBuffer], { type: "application/pdf" }), "fake.pdf");
-
+  it("6. returns 404 Not Found when documentId does not exist in database", async () => {
     const res = await fetch(`${baseUrl}/resumes/analyze`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: "non-existent-doc-uuid" }),
     });
 
-    assert.equal(res.status, 415);
+    assert.equal(res.status, 404);
     const json = (await res.json()) as { status: string; message: string };
     assert.equal(json.status, "error");
-    assert.ok(
-      json.message.toLowerCase().includes("unsupported"),
-      "Message must mention unsupported type",
-    );
+    assert.ok(json.message.includes('Document with ID "non-existent-doc-uuid" not found'));
   });
 
-  it("5. returns 422 Unprocessable Entity for corrupted or unreadable documents", async () => {
-    const formData = new FormData();
-    formData.append(
-      "file",
-      new Blob([corruptedPdfBuffer], { type: "application/pdf" }),
-      "corrupt.pdf",
-    );
-
+  it("7. returns 422 Unprocessable Entity when stored document has no extracted text", async () => {
     const res = await fetch(`${baseUrl}/resumes/analyze`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: "empty-text-doc" }),
     });
 
     assert.equal(res.status, 422);
     const json = (await res.json()) as { status: string; message: string };
     assert.equal(json.status, "error");
-    assert.ok(json.message.includes("Failed to extract text"));
+    assert.ok(json.message.includes("has no extracted text to analyze"));
   });
 
-  it("6. returns 502 Bad Gateway when AI service encounters upstream failure/timeout", async () => {
+  it("8. returns 502 Bad Gateway when AI service encounters upstream failure/timeout", async () => {
     ollamaHandler = async () => {
       throw new Error("Ollama connection refused at 11434");
     };
 
-    const formData = new FormData();
-    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
-
     const res = await fetch(`${baseUrl}/resumes/analyze`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: "valid-doc-123" }),
     });
 
     assert.equal(res.status, 502);
@@ -213,7 +257,7 @@ describe("POST /resumes/analyze Structured Analysis Integration Tests", () => {
     assert.equal(json.message, "AI service is currently unavailable or timed out");
   });
 
-  it("7. returns 422 Unprocessable Entity when LLM output violates schema validation", async () => {
+  it("9. returns 422 Unprocessable Entity when LLM output violates schema validation", async () => {
     ollamaHandler = async () =>
       new Response(
         JSON.stringify({
@@ -232,12 +276,10 @@ describe("POST /resumes/analyze Structured Analysis Integration Tests", () => {
         },
       );
 
-    const formData = new FormData();
-    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
-
     const res = await fetch(`${baseUrl}/resumes/analyze`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: "valid-doc-123" }),
     });
 
     assert.equal(res.status, 422);
@@ -247,17 +289,15 @@ describe("POST /resumes/analyze Structured Analysis Integration Tests", () => {
     assert.ok(Array.isArray(json.issues));
   });
 
-  it("8. never returns fallback or fabricated analysis data on failure", async () => {
+  it("10. never returns fallback or fabricated analysis data on failure", async () => {
     ollamaHandler = async () => {
       throw new Error("Fatal crash in Ollama server");
     };
 
-    const formData = new FormData();
-    formData.append("file", new Blob([samplePdfBuffer], { type: "application/pdf" }), "resume.pdf");
-
     const res = await fetch(`${baseUrl}/resumes/analyze`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: "valid-doc-123" }),
     });
 
     const json = (await res.json()) as { data?: unknown };

@@ -2,8 +2,14 @@ import { describe, it } from "node:test";
 import assert from "node:assert";
 import { RunnableLambda } from "@langchain/core/runnables";
 import { OutputParserException } from "@langchain/core/output_parsers";
-import { analyzeResume } from "../src/services/resume-analyzer.service.js";
-import { UpstreamAIError, SchemaValidationError } from "../src/errors/index.js";
+import { analyzeResume, analyzeStoredResume } from "../src/services/resume-analyzer.service.js";
+import {
+  UpstreamAIError,
+  SchemaValidationError,
+  DocumentNotFoundError,
+  DocumentExtractionError,
+} from "../src/errors/index.js";
+import type { DocumentRecord } from "../src/types/document.types.js";
 import type { ResumeAnalysis } from "../src/ai/schemas/resume-analysis.schema.js";
 
 const sampleValidAnalysis: ResumeAnalysis = {
@@ -177,5 +183,138 @@ describe("analyzeResume Service", () => {
     }
 
     assert.equal(returnedValue, null, "Should not return fallback data on failure");
+  });
+});
+
+describe("analyzeStoredResume Service", () => {
+  const mockDoc: DocumentRecord = {
+    id: "doc-123",
+    title: "resume.pdf",
+    file_path: null,
+    document_type: "resume",
+    raw_text: "Jane Doe - Lead Engineer with 10 years experience",
+    metadata: {},
+    created_at: new Date(),
+    updated_at: new Date(),
+  };
+
+  const mockModel = RunnableLambda.from(async () => sampleValidAnalysis);
+
+  it("1. retrieves stored document and returns structured ResumeAnalysis", async () => {
+    let capturedId = "";
+    const mockFinder = async (id: string): Promise<DocumentRecord | null> => {
+      capturedId = id;
+      return mockDoc;
+    };
+
+    const result = await analyzeStoredResume("doc-123", {
+      modelOverride: mockModel,
+      documentFinder: mockFinder,
+    });
+
+    assert.equal(capturedId, "doc-123");
+    assert.deepEqual(result, sampleValidAnalysis);
+  });
+
+  it("2. throws TypeError when documentId is missing, empty, or whitespace", async () => {
+    await assert.rejects(
+      async () => analyzeStoredResume(""),
+      (err: unknown) => {
+        assert.ok(err instanceof TypeError);
+        assert.ok((err as Error).message.includes("Document ID must be a non-empty string"));
+        return true;
+      },
+    );
+
+    await assert.rejects(
+      async () => analyzeStoredResume("   "),
+      (err: unknown) => {
+        assert.ok(err instanceof TypeError);
+        return true;
+      },
+    );
+
+    await assert.rejects(
+      async () => analyzeStoredResume(null as any),
+      (err: unknown) => {
+        assert.ok(err instanceof TypeError);
+        return true;
+      },
+    );
+  });
+
+  it("3. throws DocumentNotFoundError when document does not exist", async () => {
+    const mockFinder = async (): Promise<DocumentRecord | null> => null;
+
+    await assert.rejects(
+      async () =>
+        analyzeStoredResume("non-existent-doc", {
+          modelOverride: mockModel,
+          documentFinder: mockFinder,
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof DocumentNotFoundError);
+        assert.ok((err as Error).message.includes('Document with ID "non-existent-doc" not found'));
+        return true;
+      },
+    );
+  });
+
+  it("4. throws DocumentExtractionError when document has empty or null raw_text", async () => {
+    const emptyDoc: DocumentRecord = {
+      ...mockDoc,
+      raw_text: null,
+    };
+    const mockFinderNull = async (): Promise<DocumentRecord | null> => emptyDoc;
+
+    await assert.rejects(
+      async () =>
+        analyzeStoredResume("doc-123", {
+          modelOverride: mockModel,
+          documentFinder: mockFinderNull,
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof DocumentExtractionError);
+        assert.ok((err as Error).message.includes("has no extracted text to analyze"));
+        return true;
+      },
+    );
+
+    const whitespaceDoc: DocumentRecord = {
+      ...mockDoc,
+      raw_text: "   ",
+    };
+    const mockFinderWhitespace = async (): Promise<DocumentRecord | null> => whitespaceDoc;
+
+    await assert.rejects(
+      async () =>
+        analyzeStoredResume("doc-123", {
+          modelOverride: mockModel,
+          documentFinder: mockFinderWhitespace,
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof DocumentExtractionError);
+        return true;
+      },
+    );
+  });
+
+  it("5. propagates schema validation and upstream AI errors correctly", async () => {
+    const failingModel = RunnableLambda.from(async () => {
+      throw new UpstreamAIError("Ollama failed");
+    });
+    const mockFinder = async (): Promise<DocumentRecord | null> => mockDoc;
+
+    await assert.rejects(
+      async () =>
+        analyzeStoredResume("doc-123", {
+          modelOverride: failingModel,
+          documentFinder: mockFinder,
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof UpstreamAIError);
+        return true;
+      },
+    );
   });
 });

@@ -38,7 +38,7 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 - **API Framework:** Express 5
 - **AI & Orchestration:** LangChain (`@langchain/ollama`, `@langchain/core`)
 - **Local Model Serving:** Ollama with NVIDIA GPU acceleration
-  - **Generation LLM:** `qwen3:4b`
+  - **Generation LLM:** Configurable via `.env` (e.g. `phi4-mini:3.8b` or `qwen3:4b`)
   - **Embedding Model:** `nomic-embed-text` (768 dimensions)
 - **Document Processing:** `unpdf` (PDF), `mammoth` (DOCX), `file-type` (magic-byte detection), `multer` (upload)
 - **Database & Vectors:** PostgreSQL 18 with `pgvector` (`pgvector/pgvector:pg18`), 768-dimension vectors with HNSW cosine indexes
@@ -182,8 +182,8 @@ docker compose exec node-api npm run migrate:up
 Pull the required LLM and embedding models inside the Ollama container:
 
 ```bash
-# Generation model (Qwen 3 4B)
-docker exec -it ollama ollama pull qwen3:4b
+# Generation model (e.g. phi4-mini:3.8b or qwen3:4b as configured in .env)
+docker exec -it ollama ollama pull phi4-mini:3.8b
 
 # Embedding model (768 dimensions)
 docker exec -it ollama ollama pull nomic-embed-text
@@ -193,7 +193,7 @@ docker exec -it ollama ollama pull nomic-embed-text
 
 ## Running Tests
 
-The test suite runs using the native Node.js test runner with `tsx`.
+The test suite runs using the native Node.js test runner with `tsx` (252 passing tests across 45 suites).
 
 ### In Docker (Recommended)
 
@@ -262,11 +262,14 @@ curl -X POST http://localhost:3000/resumes \
 
 #### 2. Structured Resume Analysis (`POST /resumes/analyze`)
 
-Extracts, normalizes, and analyzes an uploaded resume using LangChain and Ollama with structured `ResumeAnalysisSchema` Zod validation.
+Analyzes an already-indexed resume document using LangChain and Ollama with structured `ResumeAnalysisSchema` Zod validation. Reuses stored text from `POST /resumes` via `documentId`.
 
 ```bash
 curl -X POST http://localhost:3000/resumes/analyze \
-  -F "file=@/path/to/resume.pdf"
+  -H "Content-Type: application/json" \
+  -d '{
+    "documentId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+  }'
 ```
 
 **Response (200 OK):**
@@ -406,12 +409,15 @@ curl -X POST http://localhost:3000/retrieval/chunks \
 
 #### 5. Compare Resume Against Job Description (`POST /jobs/compare`)
 
-Ingests a candidate resume file (PDF or DOCX), extracts/normalizes text, and performs a comprehensive fit analysis against target job description requirements using LangChain and Ollama.
+Compares an already-indexed candidate resume document against target job description requirements using LangChain and Ollama. Reuses stored text from `POST /resumes` via `documentId`.
 
 ```bash
 curl -X POST http://localhost:3000/jobs/compare \
-  -F "file=@/path/to/resume.pdf" \
-  -F "jobDescription=Looking for a Senior Backend Engineer with TypeScript, PostgreSQL, and Kubernetes experience."
+  -H "Content-Type: application/json" \
+  -d '{
+    "documentId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "jobDescription": "Looking for a Senior Backend Engineer with TypeScript, PostgreSQL, and Kubernetes experience."
+  }'
 ```
 
 **Response (200 OK):**
@@ -453,9 +459,20 @@ curl -X POST http://localhost:3000/jobs/compare \
 }
 ```
 
+## Project Status & Roadmap
+
+The project is developed in phased milestones per [`PLAN.md`](PLAN.md):
+
+- **Phases 1–8:** Infrastructure, local LLM integration, LangChain prompts, schemas, file ingestion, normalization, and structured resume analysis ✅
+- **Phases 9–10:** Embedding service (`nomic-embed-text`) & PostgreSQL `pgvector` storage with HNSW cosine indexes ✅
+- **Phase 11:** Semantic vector retrieval, top-K filtering, and transactional ingestion pipeline ✅
+- **Phase 12:** Context assembly, token/chunk budgeting, grounded generation, source tracking, and scoped `POST /resumes/:id/ask` endpoint ✅
+- **Current Next Step:** Phase 13 — Grounding & Evaluation
+
 ---
 
-## Development Guidelines
+## Documentation
 
-- **Roadmap:** Refer to [`PLAN.md`](PLAN.md) for current status, covered features, and upcoming phases.
-- **Engineering Principles:** Refer to [`AGENTS.md`](AGENTS.md) for persistent rules, architectural boundaries, and coding standards.
+- **API Flow Specification:** Refer to [`API_FLOW.md`](API_FLOW.md) for full request/response schemas and sequence diagrams.
+- **Project Plan & Milestones:** Refer to [`PLAN.md`](PLAN.md) for phase breakdowns and architectural progression.
+- **Engineering Principles:** Refer to [`AGENTS.md`](AGENTS.md) for persistent rules, module conventions, and coding constraints.

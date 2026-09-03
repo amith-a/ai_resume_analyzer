@@ -6,6 +6,7 @@ import {
   SchemaValidationError,
   UpstreamAIError,
   FileUploadError,
+  DocumentNotFoundError,
 } from "../errors/index.js";
 
 /**
@@ -18,6 +19,14 @@ export function errorHandlerMiddleware(
   res: Response,
   _next: NextFunction,
 ): void {
+  if (err instanceof DocumentNotFoundError) {
+    res.status(404).json({
+      status: "error",
+      message: err.message,
+    });
+    return;
+  }
+
   if (err instanceof FileUploadError) {
     res.status(400).json({
       status: "error",
