@@ -19,6 +19,14 @@ export async function orchestrateRagRetrieval(
   params: RagRetrievalParams,
   options?: RagRetrievalServiceOptions,
 ): Promise<DocumentChunkWithDistanceRecord[]> {
+  if (!params || typeof params !== "object") {
+    throw new TypeError("params must be an object");
+  }
+
+  if (typeof params.documentId !== "string" || params.documentId.trim().length === 0) {
+    throw new TypeError("Document ID must be a non-empty string");
+  }
+
   const queryVector = await embedText(params.query, options?.embeddingsClient);
   const retrieveFn = options?.retrieveChunks ?? retrieveChunks;
 

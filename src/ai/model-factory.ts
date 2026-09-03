@@ -11,6 +11,15 @@ export function createStructuredOllamaModel<T extends z.ZodType>(schema: T) {
   }).withStructuredOutput(schema);
 }
 
+export function createOllamaChatModel(modelName?: string): ChatOllama {
+  return new ChatOllama({
+    model: modelName ?? env.OLLAMA_MODEL,
+    baseUrl: env.OLLAMA_HOST,
+    temperature: 0,
+    think: false,
+  });
+}
+
 export function createOllamaEmbeddings(modelName?: string): OllamaEmbeddings {
   return new OllamaEmbeddings({
     model: modelName ?? env.OLLAMA_EMBEDDING_MODEL,

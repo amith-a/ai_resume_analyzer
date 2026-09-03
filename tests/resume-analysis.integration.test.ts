@@ -1,5 +1,5 @@
 import { describe, it, before, after, beforeEach, mock } from "node:test";
-import assert from "node:assert";
+import assert from "node:assert/strict";
 import type { Server } from "node:http";
 import { app } from "../src/app.js";
 import type { ResumeAnalysis } from "../src/ai/schemas/resume-analysis.schema.js";
@@ -38,18 +38,14 @@ const mockValidAnalysis: ResumeAnalysis = {
   missingOrUnclear: [],
 };
 
-// Valid sample PDF buffer
 const samplePdfBuffer = Buffer.from(
   "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 55 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Jane Doe - Lead Engineer) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000201 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n307\n%%EOF",
 );
 
-// Corrupted PDF buffer (has PDF magic header but corrupt stream/xref)
 const corruptedPdfBuffer = Buffer.from("%PDF-1.4\nCORRUPTED_BINARY_STREAM_NO_XREF\n%%EOF");
-
-// Spoofed PNG buffer
 const spoofedPngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
+describe("POST /resumes/analyze Structured Analysis Integration Tests", () => {
   let server: Server;
   let baseUrl: string;
   let capturedNormalizedText: string | null = null;
@@ -61,11 +57,13 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
     mock.method(globalThis, "fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 
-      if (url.includes("/api/chat") || url.includes("11434")) {
+      if (url.includes("/api/chat") || url.includes(":11434")) {
         const bodyStr = typeof init?.body === "string" ? init.body : "";
         try {
-          const parsed = JSON.parse(bodyStr);
-          const humanMsg = parsed.messages?.find((m: any) => m.role === "user");
+          const parsed = JSON.parse(bodyStr) as {
+            messages?: Array<{ role: string; content: string }>;
+          };
+          const humanMsg = parsed.messages?.find((m) => m.role === "user");
           if (humanMsg && typeof humanMsg.content === "string") {
             const match = humanMsg.content.match(/<resume_text>\n([\s\S]*?)\n<\/resume_text>/);
             if (match) {
@@ -128,7 +126,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
     });
 
     assert.equal(res.status, 200);
-    const json = (await res.json()) as any;
+    const json = (await res.json()) as { status: string; data: ResumeAnalysis };
     assert.equal(json.status, "success");
     assert.deepEqual(json.data, mockValidAnalysis);
   });
@@ -145,7 +143,6 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
     assert.equal(res.status, 200);
     assert.ok(capturedNormalizedText !== null, "analyzeResume must receive normalized text");
     assert.ok(capturedNormalizedText.includes("Jane Doe - Lead Engineer"));
-    // Ensure normalization removed extra edge whitespace/newlines
     assert.equal(capturedNormalizedText.trim(), capturedNormalizedText);
   });
 
@@ -155,7 +152,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
     });
 
     assert.equal(res.status, 400);
-    const json = (await res.json()) as any;
+    const json = (await res.json()) as { status: string; message: string };
     assert.equal(json.status, "error");
     assert.equal(json.message, "No resume file provided");
   });
@@ -170,7 +167,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
     });
 
     assert.equal(res.status, 415);
-    const json = (await res.json()) as any;
+    const json = (await res.json()) as { status: string; message: string };
     assert.equal(json.status, "error");
     assert.ok(
       json.message.toLowerCase().includes("unsupported"),
@@ -192,7 +189,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
     });
 
     assert.equal(res.status, 422);
-    const json = (await res.json()) as any;
+    const json = (await res.json()) as { status: string; message: string };
     assert.equal(json.status, "error");
     assert.ok(json.message.includes("Failed to extract text"));
   });
@@ -211,7 +208,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
     });
 
     assert.equal(res.status, 502);
-    const json = (await res.json()) as any;
+    const json = (await res.json()) as { status: string; message: string };
     assert.equal(json.status, "error");
     assert.equal(json.message, "AI service is currently unavailable or timed out");
   });
@@ -244,7 +241,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
     });
 
     assert.equal(res.status, 422);
-    const json = (await res.json()) as any;
+    const json = (await res.json()) as { status: string; message: string; issues: unknown[] };
     assert.equal(json.status, "error");
     assert.equal(json.message, "AI output failed schema validation");
     assert.ok(Array.isArray(json.issues));
@@ -263,7 +260,7 @@ describe("POST /resumes/analyze Integration Tests (LLM Isolated)", () => {
       body: formData,
     });
 
-    const json = (await res.json()) as any;
+    const json = (await res.json()) as { data?: unknown };
     assert.equal(json.data, undefined, "Response must not contain data object on failure");
   });
 });

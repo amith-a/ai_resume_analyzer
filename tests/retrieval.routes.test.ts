@@ -5,6 +5,7 @@ import { app } from "../src/app.js";
 import { pool } from "../src/config/db.js";
 
 const DEFAULT_VECTOR_DIMENSION = 768;
+const TEST_DOC_UUID = "11111111-1111-1111-1111-111111111111";
 const mockVector = new Array(DEFAULT_VECTOR_DIMENSION).fill(0.05);
 
 describe("POST /retrieval/chunks API Route Tests", () => {
@@ -60,6 +61,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
   });
 
   after(async () => {
+    mock.reset();
     await new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
     });
@@ -76,7 +78,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
     mockDbRows = [
       {
         id: "chunk-1",
-        document_id: "doc-123",
+        document_id: TEST_DOC_UUID,
         chunk_index: 0,
         content: "Senior Backend Developer with AWS",
         metadata: { section: "experience" },
@@ -91,7 +93,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: "backend developer with AWS experience",
-        documentId: "doc-123",
+        documentId: TEST_DOC_UUID,
         topK: 3,
         maxDistanceThreshold: 0.4,
         metadataFilter: { section: "experience" },
@@ -106,7 +108,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
     assert.equal(body.chunks[0].distance, 0.08);
 
     assert.ok(capturedQueryText.includes("FROM document_chunks"));
-    assert.equal(capturedQueryParams[0], "doc-123");
+    assert.equal(capturedQueryParams[0], TEST_DOC_UUID);
     assert.equal(capturedQueryParams[2], 3);
   });
 
@@ -118,14 +120,14 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: "TypeScript engineer",
-        documentId: "doc-456",
+        documentId: TEST_DOC_UUID,
       }),
     });
 
     assert.equal(response.status, 200);
     const body = (await response.json()) as { chunks: unknown[] };
     assert.deepEqual(body.chunks, []);
-    assert.equal(capturedQueryParams[0], "doc-456");
+    assert.equal(capturedQueryParams[0], TEST_DOC_UUID);
     assert.equal(capturedQueryParams[2], 5); // default topK
   });
 
@@ -135,7 +137,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: "",
-        documentId: "doc-123",
+        documentId: TEST_DOC_UUID,
       }),
     });
     assert.equal(resEmpty.status, 400);
@@ -144,7 +146,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        documentId: "doc-123",
+        documentId: TEST_DOC_UUID,
       }),
     });
     assert.equal(resMissing.status, 400);
@@ -168,7 +170,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: "valid query",
-        documentId: "doc-123",
+        documentId: TEST_DOC_UUID,
         topK: 0,
       }),
     });
@@ -179,7 +181,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: "valid query",
-        documentId: "doc-123",
+        documentId: TEST_DOC_UUID,
         topK: 3.5,
       }),
     });
@@ -192,7 +194,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: "valid query",
-        documentId: "doc-123",
+        documentId: TEST_DOC_UUID,
         maxDistanceThreshold: -0.2,
       }),
     });
@@ -205,7 +207,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: "valid query",
-        documentId: "doc-123",
+        documentId: TEST_DOC_UUID,
         metadataFilter: ["section", "experience"],
       }),
     });
@@ -220,7 +222,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         query: "valid query",
-        documentId: "doc-123",
+        documentId: TEST_DOC_UUID,
       }),
     });
 

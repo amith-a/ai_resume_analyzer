@@ -16,6 +16,13 @@ services:
             - node_modules/
             - dist/
             - .git/
+        - action: sync
+          path: ./tests
+          target: /app/tests
+          ignore:
+            - node_modules/
+            - dist/
+            - .git/
         - action: rebuild
           path: ./package.json
         - action: rebuild

@@ -9,6 +9,8 @@ import type {
 } from "../src/types/document.types.js";
 
 const DEFAULT_VECTOR_DIMENSION = 768;
+const TEST_DOC_UUID_1 = "11111111-1111-1111-1111-111111111111";
+const TEST_DOC_UUID_2 = "22222222-2222-2222-2222-222222222222";
 
 function createMockVector(fillValue = 0.1): number[] {
   const vec = new Array(DEFAULT_VECTOR_DIMENSION).fill(fillValue);
@@ -22,7 +24,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests", () => {
     const mockChunks: DocumentChunkWithDistanceRecord[] = [
       {
         id: "chunk-aws-1",
-        document_id: "doc-uuid-101",
+        document_id: TEST_DOC_UUID_1,
         chunk_index: 0,
         content: "Senior Backend Developer with AWS architecture experience.",
         metadata: { section: "experience" },
@@ -46,7 +48,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests", () => {
     const result = await orchestrateRagRetrieval(
       {
         query: "backend developer with AWS experience",
-        documentId: "doc-uuid-101",
+        documentId: TEST_DOC_UUID_1,
       },
       {
         embeddingsClient: mockEmbeddingsClient,
@@ -55,7 +57,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests", () => {
     );
 
     assert.ok(passedParams);
-    assert.equal(passedParams.documentId, "doc-uuid-101");
+    assert.equal(passedParams.documentId, TEST_DOC_UUID_1);
     assert.deepEqual(passedParams.queryVector, mockVector);
     assert.equal(result.length, 1);
     assert.equal(result[0].id, "chunk-aws-1");
@@ -79,7 +81,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests", () => {
     await orchestrateRagRetrieval(
       {
         query: "cloud infrastructure",
-        documentId: "doc-uuid-202",
+        documentId: TEST_DOC_UUID_2,
         topK: 10,
         maxDistanceThreshold: 0.35,
         metadataFilter: filterObj,
@@ -91,7 +93,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests", () => {
     );
 
     assert.ok(passedParams);
-    assert.equal(passedParams.documentId, "doc-uuid-202");
+    assert.equal(passedParams.documentId, TEST_DOC_UUID_2);
     assert.deepEqual(passedParams.queryVector, mockVector);
     assert.equal(passedParams.topK, 10);
     assert.equal(passedParams.maxDistanceThreshold, 0.35);
@@ -110,10 +112,11 @@ describe("RAG Retrieval Orchestration Service Unit Tests", () => {
         await orchestrateRagRetrieval(
           {
             query: "backend developer with AWS experience",
-            documentId: "doc-uuid-101",
+            documentId: TEST_DOC_UUID_1,
           },
           {
             embeddingsClient: mockEmbeddingsClient,
+            retrieveChunks: async () => [],
           },
         );
       },
@@ -141,7 +144,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests", () => {
         await orchestrateRagRetrieval(
           {
             query: "backend developer",
-            documentId: "doc-uuid-101",
+            documentId: TEST_DOC_UUID_1,
           },
           {
             embeddingsClient: mockEmbeddingsClient,
@@ -163,10 +166,11 @@ describe("RAG Retrieval Orchestration Service Unit Tests", () => {
         await orchestrateRagRetrieval(
           {
             query: "",
-            documentId: "doc-123",
+            documentId: TEST_DOC_UUID_1,
           },
           {
             embeddingsClient: mockEmbeddingsClient,
+            retrieveChunks: async () => [],
           },
         );
       },
@@ -182,6 +186,7 @@ describe("RAG Retrieval Orchestration Service Unit Tests", () => {
           },
           {
             embeddingsClient: mockEmbeddingsClient,
+            retrieveChunks: async () => [],
           },
         );
       },

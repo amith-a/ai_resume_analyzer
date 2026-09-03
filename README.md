@@ -27,7 +27,7 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
            │        ├── Qwen 3 4B (LLM)
            │        └── Nomic Embed Text (Embeddings)
            │
-           └──── Semantic Retrieval Service
+           └──── Semantic Retrieval & RAG Pipeline
 ```
 
 ---
@@ -43,7 +43,7 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 - **Document Processing:** `unpdf` (PDF), `mammoth` (DOCX), `file-type` (magic-byte detection), `multer` (upload)
 - **Database & Vectors:** PostgreSQL 18 with `pgvector` (`pgvector/pgvector:pg18`), 768-dimension vectors with HNSW cosine indexes
 - **Database Migrations:** `node-pg-migrate` (TypeScript/ESM)
-- **Validation:** Zod (runtime environment variable & structured schema validation)
+- **Validation:** Zod (runtime environment variable, API request, and structured LLM schema validation)
 - **Containerization:** Docker & Docker Compose with Compose Watch for live hot-reload
 
 ---
@@ -58,6 +58,7 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 │   ├── ai/
 │   │   ├── prompts/
 │   │   │   ├── job-comparison.prompt.ts   # Prompt template for resume vs JD comparison
+│   │   │   ├── rag.prompt.ts              # Grounded RAG ChatPromptTemplate
 │   │   │   └── resume-analysis.prompt.ts  # Structured prompt template & system rules
 │   │   ├── schemas/
 │   │   │   ├── job-comparison.schema.ts   # Zod schema for structured job comparison
@@ -69,33 +70,44 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 │   │   └── env.ts                         # Zod-validated environment config
 │   ├── controllers/
 │   │   ├── job-comparison.controller.ts   # Job description comparison handler
-│   │   ├── resume.controller.ts           # Resume ingestion and analysis handlers
+│   │   ├── resume.controller.ts           # Resume ingestion, structured analysis, and RAG ask handlers
 │   │   └── retrieval.controller.ts        # Semantic vector chunk retrieval handler
 │   ├── errors/
 │   │   └── index.ts                       # Typed domain/application errors
 │   ├── middlewares/
 │   │   ├── error.middleware.ts            # Centralized error-handling middleware
-│   │   └── upload.middleware.ts           # Multer file upload & size limit validation
+│   │   ├── upload.middleware.ts           # Multer file upload & size limit validation
+│   │   └── validation.middleware.ts       # Zod request body/query/params validation
 │   ├── repositories/
 │   │   └── document.repository.ts         # Pure SQL queries for documents, chunks, and vector similarity
 │   ├── routes/
 │   │   ├── health.routes.ts               # /health, /health/db, /health/ollama
 │   │   ├── job-comparison.routes.ts       # /jobs/compare
-│   │   ├── resume.routes.ts               # /resumes, /resumes/analyze
+│   │   ├── resume.routes.ts               # /resumes, /resumes/analyze, /resumes/:id/ask
 │   │   └── retrieval.routes.ts            # /retrieval/chunks
+│   ├── schemas/
+│   │   ├── ask-resume-request.schema.ts   # Validation schema for /resumes/:id/ask
+│   │   ├── job-comparison-request.schema.ts # Validation schema for /jobs/compare
+│   │   └── retrieval-request.schema.ts    # Validation schema for /retrieval/chunks
 │   ├── services/
 │   │   ├── document-storage.service.ts    # Transactional document & chunk persistence
 │   │   ├── embedding.service.ts           # Ollama 768-dim text and chunk embeddings
 │   │   ├── extractor.service.ts           # In-memory PDF / DOCX text extraction
+│   │   ├── grounded-answer.service.ts     # Safe deterministic grounded answer evaluation
 │   │   ├── job-comparison.service.ts      # LangChain structured job comparison
+│   │   ├── rag-generation.service.ts      # RAG LLM chat answer generation
+│   │   ├── rag-retrieval.service.ts       # Query embedding & vector search orchestration
 │   │   ├── resume-analyzer.service.ts     # LangChain structured LLM analysis
 │   │   ├── resume-ingest.service.ts       # Document validation & normalization
-│   │   └── retrieval.service.ts           # Query embedding & vector repository orchestration
+│   │   ├── retrieval.service.ts           # Vector similarity retrieval against pgvector
+│   │   └── source-tracker.service.ts      # Grounded source citation mapping
 │   ├── types/
 │   │   ├── document.types.ts              # Document, chunk, and retrieval domain types
 │   │   └── resume.types.ts                # Ingestion domain types
 │   ├── utils/
 │   │   ├── chunker.util.ts                # Recursive paragraph & sentence chunking
+│   │   ├── context-builder.util.ts        # RAG [Source N] context formatter
+│   │   ├── context-limiter.util.ts        # Deterministic context budget limiter
 │   │   ├── file-validator.util.ts         # Magic-byte MIME type detection
 │   │   ├── text-normalizer.util.ts        # Text and whitespace normalization
 │   │   └── vector.utils.ts                # PostgreSQL pgvector literal formatting & parsing
@@ -104,7 +116,7 @@ A production-conscious backend service for AI-powered resume analysis, demonstra
 ├── tests/                                 # Unit & integration test suites (Node.js test runner)
 ├── docker-compose.yml                     # Multi-container setup (API, Postgres + pgvector, Ollama)
 ├── Dockerfile                             # Multi-stage Node.js container definition
-├── PLAN.md                                # Detailed phased development roadmap
+├── PLAN.md                                # Phased development roadmap
 └── AGENTS.md                              # Persistent engineering guidelines & rules
 ```
 
@@ -141,9 +153,12 @@ DATABASE_URL_TEST=postgresql://postgres:postgres@postgres:5432/resume_test_db
 
 OLLAMA_HOST=http://ollama:11434
 OLLAMA_MODEL=qwen3:4b
-EMBEDDING_MODEL=nomic-embed-text
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
 LLM_TIMEOUT_MS=180000
 EMBEDDING_TIMEOUT_MS=60000
+CHUNK_SIZE=500
+CHUNK_OVERLAP=100
+RAG_MAX_CONTEXT_CHARACTERS=4000
 ```
 
 ### 2. Run with Docker Compose
@@ -187,8 +202,8 @@ The test suite runs using the native Node.js test runner with `tsx`.
 docker compose exec node-api npm test
 
 # Run specific test suites
-docker compose exec node-api npx tsx --test tests/retrieval.service.test.ts
-docker compose exec node-api npx tsx --test tests/document-storage.integration.test.ts
+docker compose exec node-api npx tsx --test tests/resume-ask.integration.test.ts
+docker compose exec node-api npx tsx --test tests/retrieval.routes.test.ts
 ```
 
 ### On Host Machine
@@ -198,7 +213,7 @@ docker compose exec node-api npx tsx --test tests/document-storage.integration.t
 npm.cmd test
 
 # Specific test file
-npx.cmd tsx --test tests/retrieval.routes.test.ts
+npx.cmd tsx --test tests/resume-ask.integration.test.ts
 ```
 
 ---
@@ -215,7 +230,7 @@ npx.cmd tsx --test tests/retrieval.routes.test.ts
 
 ---
 
-### Resume Ingestion & Analysis
+### Resume Ingestion, Analysis & RAG
 
 #### 1. Ingest, Extract & Index Resume (`POST /resumes`)
 
@@ -245,9 +260,9 @@ curl -X POST http://localhost:3000/resumes \
 }
 ```
 
-#### 2. Ingest & Analyze Resume with LLM (`POST /resumes/analyze`)
+#### 2. Structured Resume Analysis (`POST /resumes/analyze`)
 
-Extracts, normalizes, and analyzes an uploaded resume using LangChain and Ollama with structured Zod schema validation.
+Extracts, normalizes, and analyzes an uploaded resume using LangChain and Ollama with structured `ResumeAnalysisSchema` Zod validation.
 
 ```bash
 curl -X POST http://localhost:3000/resumes/analyze \
@@ -295,11 +310,51 @@ curl -X POST http://localhost:3000/resumes/analyze \
 }
 ```
 
+#### 3. Ask Questions on Resume via RAG (`POST /resumes/:id/ask`)
+
+Answers questions about an already-indexed resume using scoped vector retrieval, deterministic context limits, LLM chat generation, grounding fallback, and citation tracking.
+
+```bash
+curl -X POST http://localhost:3000/resumes/a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d/ask \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What is the candidate experience with distributed systems and TypeScript?"
+  }'
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "success",
+  "data": {
+    "answer": "Jane Doe is a Staff Backend Engineer with 10 years of experience designing core microservices and distributed stream processing pipelines using TypeScript and Node.js.",
+    "sources": [
+      {
+        "id": "c1d2e3f4-5678-90ab-cdef-1234567890ab",
+        "chunkIndex": 0,
+        "documentId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+      }
+    ]
+  }
+}
+```
+
+*When no relevant context exists:*
+```json
+{
+  "status": "success",
+  "data": {
+    "answer": "The information is not available in the provided resume context.",
+    "sources": []
+  }
+}
+```
+
 ---
 
 ### Semantic Retrieval
 
-#### 3. Semantic Chunk Search (`POST /retrieval/chunks`)
+#### 4. Semantic Chunk Search (`POST /retrieval/chunks`)
 
 Queries stored document chunks using natural language similarity, pgvector cosine distance (`<=>`), optional distance thresholding, and metadata filtering.
 
@@ -349,7 +404,7 @@ curl -X POST http://localhost:3000/retrieval/chunks \
 
 ### Job Description Comparison
 
-#### 4. Compare Resume Against Job Description (`POST /jobs/compare`)
+#### 5. Compare Resume Against Job Description (`POST /jobs/compare`)
 
 Ingests a candidate resume file (PDF or DOCX), extracts/normalizes text, and performs a comprehensive fit analysis against target job description requirements using LangChain and Ollama.
 

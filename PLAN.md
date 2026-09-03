@@ -578,6 +578,27 @@ Understand:
 
 Do not introduce RAG before the retrieval pipeline is understood.
 
+## Completed
+
+- **RAG Generation Service (`src/services/rag-generation.service.ts`)**:
+  - Combined scoped retrieval with LangChain ChatOllama (`qwen2.5:3b`).
+  - Strict model timeouts and upstream error mapping (`UpstreamAIError`).
+- **Context Limiter (`src/utils/context-limiter.util.ts`)**:
+  - Deterministic chunk count and character/token budget controls.
+- **Context Assembly (`src/utils/context-builder.util.ts`)**:
+  - Structured formatting injecting retrieved evidence into prompt templates.
+- **Grounding Service (`src/services/grounded-answer.service.ts`)**:
+  - Enforces deterministic fallback ("I cannot answer this question based on the provided resume.") when context is absent or model answer is blank/hallucinatory.
+- **Source Tracker (`src/services/source-tracker.service.ts`)**:
+  - Attaches strict chunk provenance exclusively for chunks used in the active context budget.
+- **Scoped RAG API Endpoint (`POST /resumes/:id/ask`)**:
+  - Parameterized request validation (`:id` and `query`).
+  - Scoped vector retrieval guaranteeing document isolation.
+- **Separation of Responsibilities**:
+  - Preserved `POST /resumes/analyze` as isolated structured profiling endpoint.
+- **Comprehensive Verification**:
+  - 252 tests passing (unit + integration), clean lint, format, and build.
+
 ---
 
 # Phase 13 — Grounding and Evaluation
@@ -780,7 +801,7 @@ Final target:
 
 The final system exposes the following public APIs. These responsibilities are architectural requirements and must not be changed without explicit approval.
 
-### 1. `POST /resumes`
+## 1. `POST /resumes`
 
 **Purpose:** Upload and index a resume.
 
@@ -804,37 +825,41 @@ Store chunks + embeddings in PostgreSQL/pgvector
 Return document/resume ID
 ```
 
-This is the primary resume ingestion/indexing endpoint.
+This is the primary resume ingestion and indexing endpoint.
 
-The resume should be uploaded and indexed once. Downstream operations should reuse the resulting document/resume ID instead of repeatedly processing the same CV.
+A resume should normally be uploaded and indexed once. Downstream operations should reuse the resulting document/resume ID rather than repeatedly processing the same resume.
 
 ---
 
-### 2. `POST /resumes/analyze`
+## 2. `POST /resumes/analyze`
 
-**Purpose:** Generate a structured analysis/profile of an already-ingested resume.
+**Purpose:** Generate a structured analysis/profile of an already-indexed resume.
 
 ```text
 Document/resume ID
     ↓
-Retrieve resume information
+Retrieve stored resume/document information
     ↓
-LLM analysis
+Resume analysis prompt
     ↓
-Structured validation
+LLM
+    ↓
+Structured output validation
     ↓
 Return ResumeAnalysis
 ```
 
-This endpoint is primarily for structured resume analysis.
+This endpoint is for structured resume analysis.
 
-It must reuse the existing analysis schemas and LLM output structure unless a change is explicitly required.
+It should reuse the existing resume-analysis schemas and structured LLM output.
+
+It is NOT the primary RAG question-answering endpoint.
 
 ---
 
-### 3. `POST /jobs/compare`
+## 3. `POST /jobs/compare`
 
-**Purpose:** Compare an existing resume against a job description.
+**Purpose:** Compare an existing resume against a job description using relevant resume evidence.
 
 ```text
 Document/resume ID
@@ -852,15 +877,13 @@ Structured comparison
 Return comparison result
 ```
 
-This is a RAG-oriented use case.
+The resume should normally be referenced by its existing document/resume ID.
 
-The resume should normally be referenced by its existing document/resume ID rather than re-uploaded and re-indexed.
-
-If the API contract supports direct resume upload as an alternative, that upload must follow the same ingestion/indexing pipeline rather than creating a separate processing path.
+If direct resume upload is supported as an alternative, it must reuse the same ingestion/indexing pipeline.
 
 ---
 
-### 4. `POST /search/chunks`
+## 4. `POST /search/chunks`
 
 **Purpose:** Perform semantic search across indexed resume chunks.
 
@@ -880,15 +903,13 @@ Apply supported metadata filters
 Return relevant chunks
 ```
 
-This endpoint exposes the retrieval capability independently of the LLM.
+This endpoint exposes semantic retrieval independently of the LLM.
 
-It is used to validate and demonstrate the semantic retrieval system.
-
-It must not require an LLM to perform the search.
+It must not require an LLM.
 
 ---
 
-### 5. `POST /resumes/:id/ask`
+## 5. `POST /resumes/:id/ask`
 
 **Purpose:** Answer a question about one specific resume using retrieved resume evidence.
 
@@ -901,24 +922,26 @@ Generate query embedding
         ↓
 Retrieve relevant chunks for that document
         ↓
-Apply retrieval rules
+Apply context limits
         ↓
-Pass retrieved evidence to LLM
+Construct RAG context
         ↓
 Generate grounded answer
         ↓
-Return answer
+Track sources
+        ↓
+Return answer + sources
 ```
 
-Retrieval must be restricted to the requested resume/document ID.
+Retrieval MUST be restricted to the requested resume/document ID.
 
-The answer should be grounded in the retrieved resume evidence and should not invent information that is not supported by the resume.
+The answer must be grounded in retrieved resume evidence.
+
+If the retrieved evidence is insufficient, use the existing grounding fallback rather than inventing information.
 
 ---
 
 ## API Responsibility Boundaries
-
-The public APIs must remain separated by responsibility:
 
 ```text
 POST /resumes
@@ -937,9 +960,9 @@ POST /resumes/:id/ask
     → resume-specific RAG question answering
 ```
 
-### Internal services
+## Internal Services
 
-The following are internal components, not public APIs:
+These are internal components, not public APIs:
 
 ```text
 Document ingestion
@@ -950,18 +973,21 @@ Vector storage
 Vector retrieval
 Similarity filtering
 Metadata filtering
+Context construction
+Context limiting
+Prompt construction
 LLM generation
+Grounding
+Source tracking
 ```
 
-These components should be reused by the public APIs rather than duplicated inside individual controllers.
+Public APIs should reuse these services rather than duplicate their logic.
 
 ## API Evolution Rule
 
-The current implementation may temporarily differ from this final contract while the project is being built.
+Implement toward this contract incrementally.
 
-Do not treat the current implementation as the final architecture.
-
-Implement toward this final contract incrementally while preserving existing functionality and schemas wherever possible.
+Preserve existing functionality and schemas wherever possible.
 
 Do not introduce additional public endpoints or alternate flows without explicit approval.
 
@@ -986,16 +1012,17 @@ We are currently at:
 Phase 9 — Embeddings ✅
 Phase 10 — PostgreSQL + pgvector ✅
 Phase 11 — Retrieval & Ingestion ✅
+Phase 12 — Context Assembly, Grounding & RAG ✅
 
 The next implementation task is:
 
-Phase 12 — Context Assembly & Grounding
+Phase 13 — Grounding and Evaluation
 
 First tasks:
 
-1. Design structured prompt context assembler combining retrieved chunks and document evidence.
-2. Implement strict grounding rules and token/budget controls to prevent hallucination.
-3. Test context assembly and formatting independently with deterministic test fixtures.
+1. Create fixed benchmark test cases / golden queries for resume question answering.
+2. Verify grounding boundary behavior and hallucination detection against edge cases.
+3. Align public contracts (such as refactoring `POST /jobs/compare` to reference indexed resume IDs via RAG evidence).
 
 
 
