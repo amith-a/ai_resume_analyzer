@@ -12,6 +12,7 @@
     "migrate:down": "node-pg-migrate down -j ts",
     "migrate:create": "node-pg-migrate create -j ts",
     "test": "tsx --test tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
