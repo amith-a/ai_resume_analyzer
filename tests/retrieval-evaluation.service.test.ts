@@ -161,20 +161,12 @@ describe("Retrieval Evaluation Service Unit Tests (Phase 13 — Block 4)", () =>
     );
 
     assert.throws(
-      () =>
-        evaluateRetrieval(
-          { name: "", query: "Query", expectedTerms: ["node"] },
-          sampleChunks,
-        ),
+      () => evaluateRetrieval({ name: "", query: "Query", expectedTerms: ["node"] }, sampleChunks),
       { name: "TypeError", message: /evaluationCase\.name must be a non-empty string/ },
     );
 
     assert.throws(
-      () =>
-        evaluateRetrieval(
-          { name: "name", query: "", expectedTerms: ["node"] },
-          sampleChunks,
-        ),
+      () => evaluateRetrieval({ name: "name", query: "", expectedTerms: ["node"] }, sampleChunks),
       { name: "TypeError", message: /evaluationCase\.query must be a non-empty string/ },
     );
 
@@ -205,19 +197,12 @@ describe("Retrieval Evaluation Service Unit Tests (Phase 13 — Block 4)", () =>
     };
 
     assert.throws(
-      () =>
-        evaluateRetrieval(
-          evaluationCase,
-          null as unknown as RetrievalChunkInput[],
-        ),
+      () => evaluateRetrieval(evaluationCase, null as unknown as RetrievalChunkInput[]),
       { name: "TypeError", message: /retrievedChunks must be an array/ },
     );
 
     assert.throws(
-      () =>
-        evaluateRetrieval(evaluationCase, [
-          { content: 123 as unknown as string },
-        ]),
+      () => evaluateRetrieval(evaluationCase, [{ content: 123 as unknown as string }]),
       { name: "TypeError", message: /retrievedChunks must be an array/ },
     );
   });

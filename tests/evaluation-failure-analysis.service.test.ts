@@ -81,9 +81,7 @@ describe("Evaluation Failure Analysis Service Unit Tests (Phase 13 — Block 8)"
     it("6. rejects invalid input with TypeError", () => {
       assert.throws(
         () =>
-          analyzeRetrievalFailure(
-            null as unknown as Parameters<typeof analyzeRetrievalFailure>[0],
-          ),
+          analyzeRetrievalFailure(null as unknown as Parameters<typeof analyzeRetrievalFailure>[0]),
         {
           name: "TypeError",
           message: /input must be an object/,
@@ -174,10 +172,7 @@ describe("Evaluation Failure Analysis Service Unit Tests (Phase 13 — Block 8)"
 
     it("12. rejects invalid input with TypeError", () => {
       assert.throws(
-        () =>
-          analyzeAnswerFailure(
-            null as unknown as Parameters<typeof analyzeAnswerFailure>[0],
-          ),
+        () => analyzeAnswerFailure(null as unknown as Parameters<typeof analyzeAnswerFailure>[0]),
         {
           name: "TypeError",
           message: /input must be an object/,
@@ -284,9 +279,7 @@ describe("Evaluation Failure Analysis Service Unit Tests (Phase 13 — Block 8)"
     it("18. rejects invalid input with TypeError", () => {
       assert.throws(
         () =>
-          analyzeGroundingFailure(
-            null as unknown as Parameters<typeof analyzeGroundingFailure>[0],
-          ),
+          analyzeGroundingFailure(null as unknown as Parameters<typeof analyzeGroundingFailure>[0]),
         {
           name: "TypeError",
           message: /input must be an object/,

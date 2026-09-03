@@ -92,10 +92,8 @@ describe("Answer Evaluation Service Unit Tests (Phase 13 — Block 5)", () => {
   it("7. correctly preserves and evaluates technical terms (Node.js, TypeScript, C++, C#, AWS)", () => {
     const evaluationCase: AnswerEvaluationCase = {
       name: "technical-terms-test",
-      context:
-        "Proficient in Node.js, TypeScript, C++, C#, and AWS cloud deployments.",
-      answer:
-        "Candidate is proficient in Node.js, TypeScript, C++, C#, and AWS.",
+      context: "Proficient in Node.js, TypeScript, C++, C#, and AWS cloud deployments.",
+      answer: "Candidate is proficient in Node.js, TypeScript, C++, C#, and AWS.",
     };
 
     const result = evaluateAnswer(evaluationCase);
@@ -109,8 +107,7 @@ describe("Answer Evaluation Service Unit Tests (Phase 13 — Block 5)", () => {
       name: "numbers-test",
       context:
         "Completed migration in 2024 leading a team of 10 senior engineers in distributed systems.",
-      answer:
-        "Candidate led team in 2024 with 10 senior engineers in distributed systems.",
+      answer: "Candidate led team in 2024 with 10 senior engineers in distributed systems.",
     };
 
     const result = evaluateAnswer(evaluationCase);
@@ -123,8 +120,7 @@ describe("Answer Evaluation Service Unit Tests (Phase 13 — Block 5)", () => {
     const evaluationCase: AnswerEvaluationCase = {
       name: "unsupported-claim-test",
       context: "The candidate works with Node.js.",
-      answer:
-        "The candidate works with Node.js, Kubernetes, Docker, Terraform, and Helm.",
+      answer: "The candidate works with Node.js, Kubernetes, Docker, Terraform, and Helm.",
     };
 
     const result = evaluateAnswer(evaluationCase);
@@ -160,10 +156,10 @@ describe("Answer Evaluation Service Unit Tests (Phase 13 — Block 5)", () => {
   });
 
   it("12. rejects malformed inputs with TypeError", () => {
-    assert.throws(
-      () => evaluateAnswer(null as unknown as AnswerEvaluationCase),
-      { name: "TypeError", message: /evaluationCase must be an object/ },
-    );
+    assert.throws(() => evaluateAnswer(null as unknown as AnswerEvaluationCase), {
+      name: "TypeError",
+      message: /evaluationCase must be an object/,
+    });
 
     assert.throws(
       () =>

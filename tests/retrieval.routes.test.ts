@@ -8,7 +8,7 @@ const DEFAULT_VECTOR_DIMENSION = 768;
 const TEST_DOC_UUID = "11111111-1111-1111-1111-111111111111";
 const mockVector = new Array(DEFAULT_VECTOR_DIMENSION).fill(0.05);
 
-describe("POST /retrieval/chunks API Route Tests", () => {
+describe("POST /search/chunks API Route Tests", () => {
   let server: Server;
   let baseUrl: string;
   let shouldOllamaFail = false;
@@ -88,7 +88,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
       },
     ];
 
-    const response = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const response = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -115,7 +115,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
   it("2. returns 200 OK for minimal valid payload (query and documentId)", async () => {
     mockDbRows = [];
 
-    const response = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const response = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -128,11 +128,11 @@ describe("POST /retrieval/chunks API Route Tests", () => {
     const body = (await response.json()) as { chunks: unknown[] };
     assert.deepEqual(body.chunks, []);
     assert.equal(capturedQueryParams[0], TEST_DOC_UUID);
-    assert.equal(capturedQueryParams[2], 5); // default topK
+    assert.equal(capturedQueryParams[2], 5);
   });
 
   it("3. returns 400 Bad Request when query is missing or empty", async () => {
-    const resEmpty = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const resEmpty = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -142,7 +142,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
     });
     assert.equal(resEmpty.status, 400);
 
-    const resMissing = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const resMissing = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -153,7 +153,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
   });
 
   it("4. returns 400 Bad Request when documentId is missing or empty", async () => {
-    const resEmpty = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const resEmpty = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -165,7 +165,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
   });
 
   it("5. returns 400 Bad Request when topK is invalid (0, negative, float, string)", async () => {
-    const resZero = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const resZero = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -176,7 +176,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
     });
     assert.equal(resZero.status, 400);
 
-    const resFloat = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const resFloat = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -189,7 +189,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
   });
 
   it("6. returns 400 Bad Request when maxDistanceThreshold is invalid (negative, non-number)", async () => {
-    const resNegative = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const resNegative = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -202,7 +202,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
   });
 
   it("7. returns 400 Bad Request when metadataFilter is invalid (array, string primitive)", async () => {
-    const resArray = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const resArray = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -217,7 +217,7 @@ describe("POST /retrieval/chunks API Route Tests", () => {
   it("8. maps UpstreamAIError to 502 Bad Gateway via centralized error middleware", async () => {
     shouldOllamaFail = true;
 
-    const res = await fetch(`${baseUrl}/retrieval/chunks`, {
+    const res = await fetch(`${baseUrl}/search/chunks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -227,5 +227,22 @@ describe("POST /retrieval/chunks API Route Tests", () => {
     });
 
     assert.equal(res.status, 502);
+  });
+
+  it("9. supports POST /retrieval/chunks as a backward-compatible alias", async () => {
+    mockDbRows = [];
+
+    const response = await fetch(`${baseUrl}/retrieval/chunks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: "TypeScript engineer",
+        documentId: TEST_DOC_UUID,
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { chunks: unknown[] };
+    assert.deepEqual(body.chunks, []);
   });
 });

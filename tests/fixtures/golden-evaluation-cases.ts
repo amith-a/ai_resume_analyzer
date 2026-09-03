@@ -127,8 +127,7 @@ export const goldenAnswerCases: GoldenAnswerCase[] = [
   {
     name: "answer-technical-numbers-stanford",
     context: CANONICAL_CHUNKS.education.content,
-    answer:
-      "The candidate studied Computer Science at Stanford University from 2010 to 2014.",
+    answer: "The candidate studied Computer Science at Stanford University from 2010 to 2014.",
     expectedPassed: true,
   },
   {
