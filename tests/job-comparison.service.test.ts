@@ -72,7 +72,9 @@ describe("compareJobDescription Service", () => {
     await compareJobDescription(sampleResume, sampleJobDescription, mockModel);
 
     assert.ok(capturedInput, "Expected model to receive formatted prompt");
-    const humanMsg = (capturedInput as PromptTestInput).messages?.find((m) => m._getType() === "human");
+    const humanMsg = (capturedInput as PromptTestInput).messages?.find(
+      (m) => m._getType() === "human",
+    );
     assert.ok(humanMsg, "Expected human message in prompt");
     const humanContent = typeof humanMsg.content === "string" ? humanMsg.content : "";
 

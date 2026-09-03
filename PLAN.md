@@ -624,6 +624,30 @@ The system should distinguish between:
 - model-generated interpretation
 - information that is unavailable
 
+## Completed
+
+- **Review & Source Provenance (Blocks 1 & 2)**:
+  - Validated runtime strict source attribution and tracking in `src/services/source-tracker.service.ts`.
+  - Added strict input validation rejecting invalid chunks or malformed records.
+- **Deterministic Lexical Grounding Checks (Block 3)**:
+  - Created `src/services/grounding-check.service.ts` calculating informative-token overlap ratio against context chunks (threshold >= 0.5).
+  - Integrated into `askResumeHandler` in `src/controllers/resume.controller.ts`, failing closed on ungrounded answers (`chunks: []`).
+- **Retrieval Evaluation (Block 4)**:
+  - Created `src/services/retrieval-evaluation.service.ts` evaluating retrieved chunks for expected technical terms and multi-word phrases using contiguous token matching.
+  - Added isolated unit tests and integration tests with vector retrieval.
+- **Answer Evaluation (Block 5)**:
+  - Created `src/services/answer-evaluation.service.ts` implementing offline lexical evaluation of model answers against provided context with stop-word filtering and technical term preservation.
+- **Canonical Golden Test Cases (Block 6)**:
+  - Defined deterministic golden evaluation cases (`tests/fixtures/golden-evaluation-cases.ts`) derived from the canonical resume fixture.
+  - Automated with dedicated golden test suites (`tests/retrieval-evaluation.golden.test.ts`, `tests/answer-evaluation.golden.test.ts`).
+- **Regression Safety Harness (Block 7)**:
+  - Created repeatable regression test suite (`tests/evaluation-regression.test.ts`) protecting retrieval, answer evaluation, and runtime grounding checks with explicit case-name failure reporting.
+- **Deterministic Failure Analysis (Block 8)**:
+  - Created `src/services/evaluation-failure-analysis.service.ts` classifying evaluation failures into a 6-category actionable taxonomy (`"no-retrieved-context"`, `"expected-evidence-missing"`, `"low-answer-overlap"`, `"empty-answer"`, `"empty-context"`, `"unsupported-claim"`).
+  - Validated with 18 comprehensive unit tests (`tests/evaluation-failure-analysis.service.test.ts`).
+- **Full Docker Verification**:
+  - 359 tests passing across 61 test suites, clean strict TypeScript check, clean ESLint, clean Prettier.
+
 ---
 
 # Phase 14 — Production Backend Practices
@@ -1013,16 +1037,18 @@ Phase 9 — Embeddings ✅
 Phase 10 — PostgreSQL + pgvector ✅
 Phase 11 — Retrieval & Ingestion ✅
 Phase 12 — Context Assembly, Grounding & RAG ✅
+Phase 13 — Grounding and Evaluation ✅
 
 The next implementation task is:
 
-Phase 13 — Grounding and Evaluation
+Phase 14 — Production Backend Practices
 
 First tasks:
 
-1. Create fixed benchmark test cases / golden queries for resume question answering.
-2. Verify grounding boundary behavior and hallucination detection against edge cases.
-3. Align public contracts (such as refactoring `POST /jobs/compare` to reference indexed resume IDs via RAG evidence).
+1. Review and strengthen environment variable loading and validation at startup.
+2. Centralize error handling, request/response boundaries, and HTTP status codes across remaining endpoints.
+3. Establish database connection pooling, transactions, migration sanity, and graceful shutdown handling.
+4. Establish API rate/size limits, safe timeout policies, and audit security hygiene across file uploads.
 
 
 

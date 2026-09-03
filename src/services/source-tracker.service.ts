@@ -2,8 +2,10 @@ import type { DocumentChunkRecord } from "../types/document.types.js";
 
 export interface RagSource {
   id: string;
-  chunkIndex: number;
+  chunkId: string;
   documentId: string;
+  chunkIndex: number;
+  content: string;
 }
 
 export interface GroundedAnswerWithSources {
@@ -43,14 +45,23 @@ export function trackSources(params: TrackSourcesParams): GroundedAnswerWithSour
   }
 
   const sources: RagSource[] = params.chunks.map((chunk) => {
-    if (!chunk || typeof chunk !== "object" || typeof chunk.id !== "string") {
+    if (
+      !chunk ||
+      typeof chunk !== "object" ||
+      typeof chunk.id !== "string" ||
+      typeof chunk.document_id !== "string" ||
+      typeof chunk.chunk_index !== "number" ||
+      typeof chunk.content !== "string"
+    ) {
       throw new TypeError("Each chunk must be a valid chunk record");
     }
 
     return {
       id: chunk.id,
-      chunkIndex: chunk.chunk_index,
+      chunkId: chunk.id,
       documentId: chunk.document_id,
+      chunkIndex: chunk.chunk_index,
+      content: chunk.content,
     };
   });
 

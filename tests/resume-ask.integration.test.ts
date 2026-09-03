@@ -26,6 +26,9 @@ describe("POST /resumes/:id/ask Scoped RAG Integration Tests (Phase 12)", () => 
     created_at: string;
   }> = [];
 
+  let mockOllamaChatAnswer =
+    "Jane Doe is a Lead Engineer with extensive experience in distributed systems.";
+
   const originalFetch = globalThis.fetch;
 
   before(async () => {
@@ -58,8 +61,7 @@ describe("POST /resumes/:id/ask Scoped RAG Integration Tests (Phase 12)", () => 
             message: {
               role: "assistant",
               content: JSON.stringify({
-                answer:
-                  "Jane Doe is a Lead Engineer with extensive experience in distributed systems.",
+                answer: mockOllamaChatAnswer,
               }),
             },
             done: true,
@@ -108,6 +110,8 @@ describe("POST /resumes/:id/ask Scoped RAG Integration Tests (Phase 12)", () => 
   beforeEach(() => {
     shouldOllamaEmbedFail = false;
     shouldOllamaChatFail = false;
+    mockOllamaChatAnswer =
+      "Jane Doe is a Lead Engineer with extensive experience in distributed systems.";
     capturedQuerySql = "";
     capturedQueryParams = [];
     mockRetrievedChunks = [
@@ -138,7 +142,13 @@ describe("POST /resumes/:id/ask Scoped RAG Integration Tests (Phase 12)", () => 
       status: string;
       data: {
         answer: string;
-        sources: Array<{ id: string; chunkIndex: number; documentId: string }>;
+        sources: Array<{
+          id: string;
+          chunkId: string;
+          chunkIndex: number;
+          documentId: string;
+          content: string;
+        }>;
       };
     };
 
@@ -146,8 +156,13 @@ describe("POST /resumes/:id/ask Scoped RAG Integration Tests (Phase 12)", () => 
     assert.ok(json.data.answer.includes("Lead Engineer"));
     assert.equal(json.data.sources.length, 1);
     assert.equal(json.data.sources[0].id, "chunk-uuid-1");
+    assert.equal(json.data.sources[0].chunkId, "chunk-uuid-1");
     assert.equal(json.data.sources[0].chunkIndex, 0);
     assert.equal(json.data.sources[0].documentId, "doc-uuid-123");
+    assert.equal(
+      json.data.sources[0].content,
+      "Jane Doe - Lead Engineer with 10 years experience in distributed systems",
+    );
   });
 
   it("2. enforces document isolation by passing :id as documentId strictly to retrieval", async () => {
@@ -248,5 +263,62 @@ describe("POST /resumes/:id/ask Scoped RAG Integration Tests (Phase 12)", () => 
       }),
     });
     assert.equal(resEmpty.status, 400);
+  });
+
+  it("7. returns grounding fallback with sources: [] when LLM generation returns an empty answer", async () => {
+    mockOllamaChatAnswer = "";
+
+    const res = await fetch(`${baseUrl}/resumes/doc-uuid-123/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: "What is Jane's experience with distributed systems?",
+      }),
+    });
+
+    assert.equal(res.status, 200);
+    const json = (await res.json()) as {
+      status: string;
+      data: {
+        answer: string;
+        sources: unknown[];
+      };
+    };
+
+    assert.equal(json.status, "success");
+    assert.equal(
+      json.data.answer,
+      "The information is not available in the provided resume context.",
+    );
+    assert.deepEqual(json.data.sources, []);
+  });
+
+  it("8. returns grounding fallback with sources: [] when LLM generation produces an ungrounded answer", async () => {
+    mockOllamaChatAnswer =
+      "Candidate specializes in quantum astrophysics and rocket propulsion with MATLAB.";
+
+    const res = await fetch(`${baseUrl}/resumes/doc-uuid-123/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: "What is Jane's experience with distributed systems?",
+      }),
+    });
+
+    assert.equal(res.status, 200);
+    const json = (await res.json()) as {
+      status: string;
+      data: {
+        answer: string;
+        sources: unknown[];
+      };
+    };
+
+    assert.equal(json.status, "success");
+    assert.equal(
+      json.data.answer,
+      "The information is not available in the provided resume context.",
+    );
+    assert.deepEqual(json.data.sources, []);
   });
 });

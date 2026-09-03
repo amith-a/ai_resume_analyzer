@@ -37,13 +37,17 @@ describe("Source Tracking Service Unit Tests (Phase 12 — Block 7)", () => {
     assert.equal(result.sources.length, 2);
     assert.deepEqual(result.sources[0], {
       id: "chunk-uuid-1",
+      chunkId: "chunk-uuid-1",
       chunkIndex: 0,
       documentId: "doc-abc",
+      content: "Content for chunk-uuid-1",
     });
     assert.deepEqual(result.sources[1], {
       id: "chunk-uuid-2",
+      chunkId: "chunk-uuid-2",
       chunkIndex: 1,
       documentId: "doc-abc",
+      content: "Content for chunk-uuid-2",
     });
   });
 
@@ -64,8 +68,10 @@ describe("Source Tracking Service Unit Tests (Phase 12 — Block 7)", () => {
     });
 
     assert.equal(result.sources[0].id, "chunk-exact-99");
+    assert.equal(result.sources[0].chunkId, "chunk-exact-99");
     assert.equal(result.sources[0].chunkIndex, 5);
     assert.equal(result.sources[0].documentId, "doc-exact-123");
+    assert.equal(result.sources[0].content, "Exact chunk content");
   });
 
   it("3. Source order matches context input order strictly", () => {
@@ -150,9 +156,75 @@ describe("Source Tracking Service Unit Tests (Phase 12 — Block 7)", () => {
       message: /chunks must be an array/,
     });
 
+    const validBaseChunk: DocumentChunkRecord = {
+      id: "chunk-valid-1",
+      document_id: "doc-valid-1",
+      chunk_index: 0,
+      content: "Valid chunk content",
+      metadata: {},
+      embedding: null,
+      created_at: new Date(),
+    };
+
     assert.throws(() => trackSources({ answer: "Valid", chunks: [{}] as unknown as [] }), {
       name: "TypeError",
       message: /Each chunk must be a valid chunk record/,
     });
+
+    assert.throws(
+      () => trackSources({ answer: "Valid", chunks: [null as unknown as DocumentChunkRecord] }),
+      {
+        name: "TypeError",
+        message: /Each chunk must be a valid chunk record/,
+      },
+    );
+
+    assert.throws(
+      () =>
+        trackSources({
+          answer: "Valid",
+          chunks: [{ ...validBaseChunk, id: 123 as unknown as string }],
+        }),
+      {
+        name: "TypeError",
+        message: /Each chunk must be a valid chunk record/,
+      },
+    );
+
+    assert.throws(
+      () =>
+        trackSources({
+          answer: "Valid",
+          chunks: [{ ...validBaseChunk, document_id: 456 as unknown as string }],
+        }),
+      {
+        name: "TypeError",
+        message: /Each chunk must be a valid chunk record/,
+      },
+    );
+
+    assert.throws(
+      () =>
+        trackSources({
+          answer: "Valid",
+          chunks: [{ ...validBaseChunk, chunk_index: "zero" as unknown as number }],
+        }),
+      {
+        name: "TypeError",
+        message: /Each chunk must be a valid chunk record/,
+      },
+    );
+
+    assert.throws(
+      () =>
+        trackSources({
+          answer: "Valid",
+          chunks: [{ ...validBaseChunk, content: null as unknown as string }],
+        }),
+      {
+        name: "TypeError",
+        message: /Each chunk must be a valid chunk record/,
+      },
+    );
   });
 });

@@ -6,8 +6,12 @@ import { orchestrateRagRetrieval } from "../services/rag-retrieval.service.js";
 import { limitContextChunks } from "../utils/context-limiter.util.js";
 import { constructContext } from "../utils/context-builder.util.js";
 import { generateRagAnswer } from "../services/rag-generation.service.js";
-import { produceGroundedAnswer } from "../services/grounded-answer.service.js";
+import {
+  produceGroundedAnswer,
+  GROUNDING_FALLBACK_TEXT,
+} from "../services/grounded-answer.service.js";
 import { trackSources } from "../services/source-tracker.service.js";
+import { checkGrounding } from "../services/grounding-check.service.js";
 import type { AskResumeParams, AskResumeBody } from "../schemas/ask-resume-request.schema.js";
 import type { AnalyzeResumeRequestInput } from "../schemas/analyze-resume-request.schema.js";
 
@@ -96,17 +100,34 @@ export async function askResumeHandler(
     context: formattedContext,
   });
 
-  // 5. Enforce grounding fallback if no usable context exists
+  // 5. Enforce grounding fallback if no usable context exists or answer is empty
   const hasUsableContext = limitedChunks.length > 0;
   const groundedResult = produceGroundedAnswer({
     answer: generationResult.answer,
     hasUsableContext,
   });
 
-  // 6. Track sources exclusively from the context-limited chunks
+  // 6. Enforce lexical grounding check on candidate answer
+  let finalAnswer = groundedResult.answer;
+  let isGrounded = false;
+
+  if (finalAnswer !== GROUNDING_FALLBACK_TEXT && hasUsableContext) {
+    const check = checkGrounding({
+      answer: finalAnswer,
+      context: formattedContext,
+    });
+    isGrounded = check.grounded;
+    if (!isGrounded) {
+      finalAnswer = GROUNDING_FALLBACK_TEXT;
+    }
+  }
+
+  // 7. Track sources exclusively when answer is grounded and available
+  const activeChunks = isGrounded ? limitedChunks : [];
+
   const finalResult = trackSources({
-    answer: groundedResult.answer,
-    chunks: limitedChunks,
+    answer: finalAnswer,
+    chunks: activeChunks,
   });
 
   res.status(200).json({
