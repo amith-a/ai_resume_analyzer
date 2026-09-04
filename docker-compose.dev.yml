@@ -1,5 +1,6 @@
 services:
   node-api:
+    image: ai-resume-analyzer:dev
     build:
       context: .
       target: development
@@ -26,3 +27,10 @@ services:
           path: ./package.json
         - action: rebuild
           path: ./package-lock.json
+
+  postgres:
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql
+
+volumes:
+  postgres_dev_data:
