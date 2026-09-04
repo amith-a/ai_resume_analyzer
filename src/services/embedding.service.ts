@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { createOllamaEmbeddings } from "../ai/model-factory.js";
 import { UpstreamAIError } from "../errors/index.js";
+import { logger, getRequestId } from "../config/logger.js";
 
 /**
  * Interface representing an embeddings client compatible with LangChain Embeddings.
@@ -78,7 +79,16 @@ export async function embedText(
     const validated = validateEmbeddingVector(vector);
 
     const duration = performance.now() - start;
-    console.log(
+    const requestId = getRequestId();
+    logger.info(
+      {
+        operation: "ai_embed_text",
+        status: "success",
+        model: env.OLLAMA_EMBEDDING_MODEL,
+        dimension: validated.length,
+        durationMs: Math.round(duration),
+        ...(requestId ? { requestId } : {}),
+      },
       `Text embedding generated successfully (dim: ${validated.length}) in ${duration.toFixed(0)}ms`,
     );
 
@@ -86,7 +96,18 @@ export async function embedText(
   } catch (error: unknown) {
     const duration = performance.now() - start;
     const errorType = error instanceof Error ? error.name : "Error";
-    console.error(`Embedding generation failed after ${duration.toFixed(0)}ms (${errorType})`);
+    const requestId = getRequestId();
+    logger.error(
+      {
+        operation: "ai_embed_text",
+        status: "error",
+        model: env.OLLAMA_EMBEDDING_MODEL,
+        durationMs: Math.round(duration),
+        errorType,
+        ...(requestId ? { requestId } : {}),
+      },
+      `Embedding generation failed after ${duration.toFixed(0)}ms (${errorType})`,
+    );
 
     if (error instanceof TypeError) {
       throw error;
@@ -145,13 +166,36 @@ export async function embedChunks(
     const validatedVectors = vectors.map((v) => validateEmbeddingVector(v));
 
     const duration = performance.now() - start;
-    console.log(`Batch embedded ${validatedVectors.length} chunks in ${duration.toFixed(0)}ms`);
+    const requestId = getRequestId();
+    logger.info(
+      {
+        operation: "ai_embed_chunks",
+        status: "success",
+        model: env.OLLAMA_EMBEDDING_MODEL,
+        chunkCount: validatedVectors.length,
+        durationMs: Math.round(duration),
+        ...(requestId ? { requestId } : {}),
+      },
+      `Batch embedded ${validatedVectors.length} chunks in ${duration.toFixed(0)}ms`,
+    );
 
     return validatedVectors;
   } catch (error: unknown) {
     const duration = performance.now() - start;
     const errorType = error instanceof Error ? error.name : "Error";
-    console.error(`Batch embedding failed after ${duration.toFixed(0)}ms (${errorType})`);
+    const requestId = getRequestId();
+    logger.error(
+      {
+        operation: "ai_embed_chunks",
+        status: "error",
+        model: env.OLLAMA_EMBEDDING_MODEL,
+        chunkCount: texts.length,
+        durationMs: Math.round(duration),
+        errorType,
+        ...(requestId ? { requestId } : {}),
+      },
+      `Batch embedding failed after ${duration.toFixed(0)}ms (${errorType})`,
+    );
 
     if (error instanceof TypeError) {
       throw error;

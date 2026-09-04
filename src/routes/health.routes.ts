@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { pool } from "../config/db.js";
 import { env } from "../config/env.js";
+import { logger, getRequestId } from "../config/logger.js";
 
 export const healthRouter = Router();
 
@@ -27,7 +28,16 @@ healthRouter.get("/db", async (_req: Request, res: Response) => {
     });
   } catch (error: unknown) {
     const errorType = error instanceof Error ? error.name : "Error";
-    console.error(`Database health check failed (${errorType})`);
+    const requestId = getRequestId();
+    logger.error(
+      {
+        operation: "health_check_db",
+        status: "error",
+        errorType,
+        ...(requestId ? { requestId } : {}),
+      },
+      `Database health check failed (${errorType})`,
+    );
     res.status(500).json({
       status: "error",
       database: "disconnected",
@@ -53,7 +63,16 @@ healthRouter.get("/ollama", async (_req: Request, res: Response) => {
     });
   } catch (error: unknown) {
     const errorType = error instanceof Error ? error.name : "Error";
-    console.error(`Ollama health check failed (${errorType})`);
+    const requestId = getRequestId();
+    logger.error(
+      {
+        operation: "health_check_ollama",
+        status: "error",
+        errorType,
+        ...(requestId ? { requestId } : {}),
+      },
+      `Ollama health check failed (${errorType})`,
+    );
     res.status(500).json({ status: "error", ollama: "unreachable" });
   }
 });

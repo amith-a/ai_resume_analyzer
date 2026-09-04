@@ -1,6 +1,7 @@
 import type pg from "pg";
 import { pool } from "../config/db.js";
 import { toVectorSql, parseVectorSql } from "../utils/vector.utils.js";
+import { logger, getRequestId } from "../config/logger.js";
 import type {
   DocumentRecord,
   DocumentChunkRecord,
@@ -10,6 +11,48 @@ import type {
 } from "../types/document.types.js";
 
 export type Queryable = pg.Pool | pg.PoolClient;
+
+/**
+ * Executes a database query while recording execution duration and safe structured operational metadata.
+ */
+async function timedDbQuery<T extends pg.QueryResultRow>(
+  operation: string,
+  queryFn: () => Promise<pg.QueryResult<T>>,
+  extraMeta?: Record<string, unknown>,
+): Promise<pg.QueryResult<T>> {
+  const start = performance.now();
+  const requestId = getRequestId();
+  try {
+    const result = await queryFn();
+    const duration = performance.now() - start;
+    logger.info(
+      {
+        operation,
+        status: "success",
+        durationMs: Math.round(duration),
+        ...(extraMeta ?? {}),
+        ...(requestId ? { requestId } : {}),
+      },
+      `Database operation ${operation} completed in ${duration.toFixed(0)}ms`,
+    );
+    return result;
+  } catch (error: unknown) {
+    const duration = performance.now() - start;
+    const errorType = error instanceof Error ? error.name : "Error";
+    logger.error(
+      {
+        operation,
+        status: "error",
+        durationMs: Math.round(duration),
+        errorType,
+        ...(extraMeta ?? {}),
+        ...(requestId ? { requestId } : {}),
+      },
+      `Database operation ${operation} failed after ${duration.toFixed(0)}ms (${errorType})`,
+    );
+    throw error;
+  }
+}
 
 /**
  * Raw row shape returned by PostgreSQL for document_chunks queries before vector parsing.
@@ -68,7 +111,9 @@ export async function insertDocument(
     JSON.stringify(params.metadata ?? {}),
   ];
 
-  const result = await queryable.query<DocumentRecord>(query, values);
+  const result = await timedDbQuery("db_insert_document", () =>
+    queryable.query<DocumentRecord>(query, values),
+  );
   return result.rows[0];
 }
 
@@ -128,7 +173,11 @@ export async function insertDocumentChunks(
     RETURNING id, document_id, chunk_index, content, metadata, embedding::text, created_at;
   `;
 
-  const result = await queryable.query<RawChunkRow>(query, queryParams);
+  const result = await timedDbQuery(
+    "db_insert_chunks",
+    () => queryable.query<RawChunkRow>(query, queryParams),
+    { chunkCount: chunks.length },
+  );
 
   return result.rows.map((row) => ({
     id: row.id,
@@ -162,7 +211,9 @@ export async function findDocumentById(
     WHERE id = $1;
   `;
 
-  const result = await queryable.query<DocumentRecord>(query, [id]);
+  const result = await timedDbQuery("db_find_document_by_id", () =>
+    queryable.query<DocumentRecord>(query, [id]),
+  );
   return result.rows[0] ?? null;
 }
 
@@ -188,7 +239,9 @@ export async function findDocumentChunksByDocumentId(
     ORDER BY chunk_index ASC;
   `;
 
-  const result = await queryable.query<RawChunkRow>(query, [documentId]);
+  const result = await timedDbQuery("db_find_chunks_by_document_id", () =>
+    queryable.query<RawChunkRow>(query, [documentId]),
+  );
 
   return result.rows.map((row) => ({
     id: row.id,
@@ -217,7 +270,7 @@ export async function deleteDocumentById(
   }
 
   const query = `DELETE FROM documents WHERE id = $1;`;
-  const result = await queryable.query(query, [id]);
+  const result = await timedDbQuery("db_delete_document_by_id", () => queryable.query(query, [id]));
   return (result.rowCount ?? 0) > 0;
 }
 
@@ -292,7 +345,11 @@ export async function findChunksByDocumentIdOrderedBySimilarity(
     LIMIT $3;
   `;
 
-  const result = await queryable.query<RawChunkWithDistanceRow>(query, queryParams);
+  const result = await timedDbQuery(
+    "db_vector_similarity_search",
+    () => queryable.query<RawChunkWithDistanceRow>(query, queryParams),
+    { topK },
+  );
 
   return result.rows.map((row) => ({
     id: row.id,

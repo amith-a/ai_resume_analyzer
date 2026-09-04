@@ -1,11 +1,13 @@
 import { extractText } from "unpdf";
 import mammoth from "mammoth";
 import { DocumentExtractionError } from "../errors/index.js";
+import { logger, getRequestId } from "../config/logger.js";
 
 export async function extractTextFromDocument(
   buffer: Buffer,
   mimeType: string,
 ): Promise<{ text: string; pageCount?: number }> {
+  const startTime = Date.now();
   try {
     if (mimeType === "application/pdf") {
       const { text, totalPages } = await extractText(new Uint8Array(buffer), {
@@ -18,6 +20,21 @@ export async function extractTextFromDocument(
       if (!extractedText || extractedText.trim().length === 0) {
         throw new DocumentExtractionError("Document contains no readable text or is empty");
       }
+
+      const durationMs = Date.now() - startTime;
+      const requestId = getRequestId();
+      logger.info(
+        {
+          operation: "text_extraction",
+          status: "success",
+          mimeType,
+          textLength: extractedText.length,
+          ...(totalPages !== undefined ? { pageCount: totalPages } : {}),
+          durationMs,
+          ...(requestId ? { requestId } : {}),
+        },
+        `Document text extracted successfully in ${durationMs}ms`,
+      );
 
       return {
         text: extractedText,
@@ -32,6 +49,20 @@ export async function extractTextFromDocument(
         throw new DocumentExtractionError("Document contains no readable text or is empty");
       }
 
+      const durationMs = Date.now() - startTime;
+      const requestId = getRequestId();
+      logger.info(
+        {
+          operation: "text_extraction",
+          status: "success",
+          mimeType,
+          textLength: value.length,
+          durationMs,
+          ...(requestId ? { requestId } : {}),
+        },
+        `Document text extracted successfully in ${durationMs}ms`,
+      );
+
       return {
         text: value,
       };
@@ -45,8 +76,20 @@ export async function extractTextFromDocument(
       throw error;
     }
 
+    const durationMs = Date.now() - startTime;
     const errorType = error instanceof Error ? error.name : "Error";
-    console.error(`Text extraction parser failed (${errorType})`);
+    const requestId = getRequestId();
+    logger.error(
+      {
+        operation: "text_extraction",
+        status: "error",
+        errorType,
+        mimeType,
+        durationMs,
+        ...(requestId ? { requestId } : {}),
+      },
+      `Text extraction parser failed (${errorType})`,
+    );
     throw new DocumentExtractionError(
       "Failed to extract text from document: file may be corrupted, encrypted, or malformed",
       error,

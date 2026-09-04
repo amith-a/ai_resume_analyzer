@@ -1,9 +1,13 @@
 import { env } from "./config/env.js";
 import { app } from "./app.js";
 import { closePool } from "./config/db.js";
+import { logger } from "./config/logger.js";
 
 const server = app.listen(env.PORT, () => {
-  console.log(`Server listening on port ${env.PORT} in ${env.NODE_ENV} mode`);
+  logger.info(
+    { port: env.PORT, nodeEnv: env.NODE_ENV },
+    `Server listening on port ${env.PORT} in ${env.NODE_ENV} mode`,
+  );
 });
 
 let isShuttingDown = false;
@@ -14,23 +18,23 @@ const gracefulShutdown = async (signal: string) => {
   }
   isShuttingDown = true;
 
-  console.log(`Received ${signal}. Starting graceful shutdown...`);
+  logger.info({ signal }, `Received ${signal}. Starting graceful shutdown...`);
 
   const timeoutTimer = setTimeout(() => {
-    console.error("Forced shutdown due to timeout");
+    logger.error("Forced shutdown due to timeout");
     process.exit(1);
   }, 3000);
   timeoutTimer.unref();
 
   server.close(async () => {
-    console.log("HTTP server closed.");
+    logger.info("HTTP server closed.");
     try {
       await closePool();
-      console.log("PostgreSQL connection pool drained.");
+      logger.info("PostgreSQL connection pool drained.");
       process.exit(0);
     } catch (err: unknown) {
       const errorType = err instanceof Error ? err.name : "Error";
-      console.error(`Error closing PostgreSQL pool (${errorType})`);
+      logger.error({ errorType }, `Error closing PostgreSQL pool (${errorType})`);
       process.exit(1);
     }
   });

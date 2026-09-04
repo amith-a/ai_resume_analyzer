@@ -17,6 +17,7 @@ import {
   SchemaValidationError,
 } from "../errors/index.js";
 import { handleLlmError } from "../ai/error-handler.js";
+import { logger, getRequestId } from "../config/logger.js";
 
 export interface CompareStoredJobOptions {
   modelOverride?: Runnable<unknown, unknown>;
@@ -69,20 +70,46 @@ export async function compareJobDescription(
   } catch (error: unknown) {
     const duration = performance.now() - start;
     const errorType = error instanceof Error ? error.name : "Error";
-    console.error(
+    const requestId = getRequestId();
+    logger.error(
+      {
+        operation: "ai_job_comparison",
+        status: "error",
+        model: env.OLLAMA_MODEL,
+        durationMs: Math.round(duration),
+        errorType,
+        ...(requestId ? { requestId } : {}),
+      },
       `Job comparison LLM invocation failed after ${duration.toFixed(0)}ms (${errorType})`,
     );
     handleLlmError(error, JobComparisonOutputSchema);
   }
 
   const duration = performance.now() - start;
-  console.log(`Job comparison LLM inference completed in ${duration.toFixed(0)}ms`);
+  const requestId = getRequestId();
+  logger.info(
+    {
+      operation: "ai_job_comparison",
+      status: "success",
+      model: env.OLLAMA_MODEL,
+      durationMs: Math.round(duration),
+      ...(requestId ? { requestId } : {}),
+    },
+    `Job comparison LLM inference completed in ${duration.toFixed(0)}ms`,
+  );
 
   // Defensive validation using the canonical schema
   const parseResult = JobComparisonOutputSchema.safeParse(structuredResult);
 
   if (!parseResult.success) {
-    console.error(
+    logger.error(
+      {
+        operation: "ai_job_comparison",
+        status: "error",
+        errorType: "SchemaValidationError",
+        issueCount: parseResult.error.issues.length,
+        ...(requestId ? { requestId } : {}),
+      },
       `Job comparison output failed defensive schema validation (${parseResult.error.issues.length} issues)`,
     );
     throw new SchemaValidationError(

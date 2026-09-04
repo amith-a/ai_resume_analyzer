@@ -8,6 +8,7 @@ import { validateResumeBuffer } from "../src/utils/file-validator.util.js";
 import { extractTextFromDocument } from "../src/services/extractor.service.js";
 import { MAX_FILE_SIZE_BYTES } from "../src/middlewares/upload.middleware.js";
 import { DocumentExtractionError } from "../src/errors/index.js";
+import { logger } from "../src/config/logger.js";
 
 // Minimal valid PDF buffer containing extractable text
 const VALID_PDF_BUFFER = Buffer.from(
@@ -323,7 +324,16 @@ describe("Security Hardening Tests (Phase 14 — Block 5)", () => {
   describe("Safe Error Handling & Logging", () => {
     it("12. sanitizes error logs so raw file buffers, prompts, or secrets are not emitted", async () => {
       const loggedErrors: string[] = [];
+      const originalLoggerError = logger.error.bind(logger);
       const originalConsoleError = console.error;
+      logger.error = ((...args: unknown[]) => {
+        loggedErrors.push(
+          args
+            .map((a) => (typeof a === "object" && a !== null ? JSON.stringify(a) : String(a)))
+            .join(" "),
+        );
+        return true;
+      }) as typeof logger.error;
       console.error = (...args: unknown[]) => {
         loggedErrors.push(args.map((a) => String(a)).join(" "));
       };
@@ -340,6 +350,7 @@ describe("Security Hardening Tests (Phase 14 — Block 5)", () => {
         assert.match(errorOutput, /Text extraction parser failed/);
         assert.ok(!errorOutput.includes("secret_candidate_ssn_12345"));
       } finally {
+        logger.error = originalLoggerError;
         console.error = originalConsoleError;
       }
     });

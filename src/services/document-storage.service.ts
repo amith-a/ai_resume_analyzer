@@ -1,6 +1,7 @@
 import type pg from "pg";
 import { pool } from "../config/db.js";
 import { chunkText } from "../utils/chunker.util.js";
+import { logger, getRequestId } from "../config/logger.js";
 import { embedChunks, type EmbeddingsClient } from "./embedding.service.js";
 import {
   insertDocument,
@@ -73,7 +74,16 @@ export async function saveDocumentWithChunks(
   } catch (error) {
     await client.query("ROLLBACK;").catch((rollbackErr: unknown) => {
       const errorType = rollbackErr instanceof Error ? rollbackErr.name : "Error";
-      console.error(`Failed to rollback transaction in saveDocumentWithChunks (${errorType})`);
+      const requestId = getRequestId();
+      logger.error(
+        {
+          operation: "db_transaction_rollback",
+          status: "error",
+          errorType,
+          ...(requestId ? { requestId } : {}),
+        },
+        `Failed to rollback transaction in saveDocumentWithChunks (${errorType})`,
+      );
     });
     throw error;
   } finally {

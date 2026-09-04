@@ -14,6 +14,7 @@ import {
   SchemaValidationError,
   PayloadTooLargeError,
 } from "../src/errors/index.js";
+import { logger } from "../src/config/logger.js";
 
 describe("AI Reliability & Safety Tests (Phase 14 — Block 4)", () => {
   describe("1. Bounded Timeouts (Deterministic Mocks)", () => {
@@ -251,7 +252,16 @@ describe("AI Reliability & Safety Tests (Phase 14 — Block 4)", () => {
   describe("4. Safe AI Operational Logging", () => {
     it("4.1 LLM failure logs operational diagnostics without emitting sensitive resume text", async () => {
       const loggedErrors: string[] = [];
+      const originalLoggerError = logger.error.bind(logger);
       const originalConsoleError = console.error;
+      logger.error = ((...args: unknown[]) => {
+        loggedErrors.push(
+          args
+            .map((a) => (typeof a === "object" && a !== null ? JSON.stringify(a) : String(a)))
+            .join(" "),
+        );
+        return true;
+      }) as typeof logger.error;
       console.error = (...args: unknown[]) => {
         loggedErrors.push(args.map(String).join(" "));
       };
@@ -272,7 +282,7 @@ describe("AI Reliability & Safety Tests (Phase 14 — Block 4)", () => {
           await analyzeResume(`Valid resume with ${sensitiveSnippet}`, mockFailingModel);
         });
 
-        // Verify that sensitiveSnippet was NOT emitted into console.error
+        // Verify that sensitiveSnippet was NOT emitted into error logs
         const allLogs = loggedErrors.join("\n");
         assert.equal(
           allLogs.includes(sensitiveSnippet),
@@ -282,6 +292,7 @@ describe("AI Reliability & Safety Tests (Phase 14 — Block 4)", () => {
         // Verify operational metadata was logged
         assert.match(allLogs, /Resume analysis LLM invocation failed after \d+ms/);
       } finally {
+        logger.error = originalLoggerError;
         console.error = originalConsoleError;
       }
     });

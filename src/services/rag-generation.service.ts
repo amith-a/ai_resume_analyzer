@@ -8,6 +8,7 @@ import { z } from "zod";
 import { OutputParserException } from "@langchain/core/output_parsers";
 import { UpstreamAIError, SchemaValidationError } from "../errors/index.js";
 import { handleLlmError } from "../ai/error-handler.js";
+import { logger, getRequestId } from "../config/logger.js";
 
 export interface GenerateRagAnswerParams {
   query: string;
@@ -68,7 +69,18 @@ export async function generateRagAnswer(
   } catch (error: unknown) {
     const duration = performance.now() - start;
     const errorType = error instanceof Error ? error.name : "Error";
-    console.error(`RAG answer generation failed after ${duration.toFixed(0)}ms (${errorType})`);
+    const requestId = getRequestId();
+    logger.error(
+      {
+        operation: "ai_rag_answer",
+        status: "error",
+        model: env.OLLAMA_MODEL,
+        durationMs: Math.round(duration),
+        errorType,
+        ...(requestId ? { requestId } : {}),
+      },
+      `RAG answer generation failed after ${duration.toFixed(0)}ms (${errorType})`,
+    );
 
     if (error instanceof TypeError || error instanceof SchemaValidationError) {
       throw error;
@@ -86,11 +98,28 @@ export async function generateRagAnswer(
   }
 
   const duration = performance.now() - start;
-  console.log(`RAG answer generation completed in ${duration.toFixed(0)}ms`);
+  const requestId = getRequestId();
+  logger.info(
+    {
+      operation: "ai_rag_answer",
+      status: "success",
+      model: env.OLLAMA_MODEL,
+      durationMs: Math.round(duration),
+      ...(requestId ? { requestId } : {}),
+    },
+    `RAG answer generation completed in ${duration.toFixed(0)}ms`,
+  );
 
   const parseResult = RagAnswerSchema.safeParse(response);
   if (!parseResult.success) {
-    console.error(
+    logger.error(
+      {
+        operation: "ai_rag_answer",
+        status: "error",
+        errorType: "SchemaValidationError",
+        issueCount: parseResult.error.issues.length,
+        ...(requestId ? { requestId } : {}),
+      },
       `RAG answer output failed defensive schema validation (${parseResult.error.issues.length} issues)`,
     );
     throw new SchemaValidationError(

@@ -3,10 +3,12 @@ import { healthRouter } from "./routes/health.routes.js";
 import { resumeRouter } from "./routes/resume.routes.js";
 import { jobComparisonRouter } from "./routes/job-comparison.routes.js";
 import { searchRouter } from "./routes/search.routes.js";
+import { httpLoggerMiddleware } from "./middlewares/http-logger.middleware.js";
 import { errorHandlerMiddleware } from "./middlewares/error.middleware.js";
 
 export const app = express();
 
+app.use(httpLoggerMiddleware);
 app.use(express.json());
 
 // Routes

@@ -29,6 +29,9 @@ export const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
     PORT: z.coerce.number().int().positive().default(3000),
+    LOG_LEVEL: z
+      .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+      .default("info"),
     DATABASE_URL: z.url(),
     DATABASE_URL_TEST: z.url().optional(),
     OLLAMA_HOST: z.url().default("http://ollama:11434"),
