@@ -1,5 +1,4 @@
 import type { Runnable } from "@langchain/core/runnables";
-import { z } from "zod";
 import { env } from "../config/env.js";
 import { createStructuredOllamaModel } from "../ai/model-factory.js";
 import { resumeAnalysisPrompt } from "../ai/prompts/resume-analysis.prompt.js";
@@ -9,6 +8,7 @@ import {
   DocumentNotFoundError,
   DocumentExtractionError,
   SchemaValidationError,
+  PayloadTooLargeError,
 } from "../errors/index.js";
 import { handleLlmError } from "../ai/error-handler.js";
 
@@ -33,6 +33,12 @@ export async function analyzeResume(
     throw new TypeError("Resume text must be a non-empty string");
   }
 
+  if (resumeText.length > env.RESUME_ANALYSIS_MAX_CHARACTERS) {
+    throw new PayloadTooLargeError(
+      `Resume text exceeds maximum allowed limit of ${env.RESUME_ANALYSIS_MAX_CHARACTERS} characters`,
+    );
+  }
+
   const structuredModel = modelOverride ?? createStructuredOllamaModel(ResumeAnalysisSchema);
 
   const pipeline = resumeAnalysisPrompt.pipe(structuredModel);
@@ -45,7 +51,10 @@ export async function analyzeResume(
     structuredResult = await pipeline.invoke({ resumeText: resumeText.trim() }, { signal });
   } catch (error: unknown) {
     const duration = performance.now() - start;
-    console.error(`Resume analysis LLM invocation failed after ${duration.toFixed(0)}ms:`, error);
+    const errorType = error instanceof Error ? error.name : "Error";
+    console.error(
+      `Resume analysis LLM invocation failed after ${duration.toFixed(0)}ms (${errorType})`,
+    );
     handleLlmError(error, ResumeAnalysisSchema);
   }
 
@@ -57,8 +66,7 @@ export async function analyzeResume(
 
   if (!parseResult.success) {
     console.error(
-      "Resume analysis output failed defensive schema validation:",
-      z.treeifyError(parseResult.error),
+      `Resume analysis output failed defensive schema validation (${parseResult.error.issues.length} issues)`,
     );
     throw new SchemaValidationError(
       "Model output failed defensive schema validation",

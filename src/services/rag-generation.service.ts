@@ -4,7 +4,10 @@ import { env } from "../config/env.js";
 import { createStructuredOllamaModel } from "../ai/model-factory.js";
 import { ragPrompt } from "../ai/prompts/rag.prompt.js";
 import { RagAnswerSchema, type RagAnswer } from "../ai/schemas/rag-answer.schema.js";
+import { z } from "zod";
+import { OutputParserException } from "@langchain/core/output_parsers";
 import { UpstreamAIError, SchemaValidationError } from "../errors/index.js";
+import { handleLlmError } from "../ai/error-handler.js";
 
 export interface GenerateRagAnswerParams {
   query: string;
@@ -28,17 +31,6 @@ export function removeThinkingTags(text: string): string {
     return "";
   }
   return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-}
-
-/**
- * Extracts answer text from the structured RagAnswer object.
- */
-function extractAnswerText(response: unknown): string {
-  if (response && typeof response === "object" && "answer" in response) {
-    const rawAnswer = (response as { answer: unknown }).answer;
-    return typeof rawAnswer === "string" ? rawAnswer : String(rawAnswer ?? "");
-  }
-  return "";
 }
 
 /**
@@ -69,27 +61,47 @@ export async function generateRagAnswer(
   const timeoutMs = options?.timeoutMsOverride ?? env.LLM_TIMEOUT_MS;
   const start = performance.now();
 
+  let response: unknown;
   try {
     const signal = AbortSignal.timeout(timeoutMs);
-    const response = await pipeline.invoke({ query, context }, { signal });
-
-    const duration = performance.now() - start;
-    console.log(`RAG answer generation completed in ${duration.toFixed(0)}ms`);
-
-    const rawText = extractAnswerText(response);
-    const cleanAnswer = removeThinkingTags(rawText);
-
-    return {
-      answer: cleanAnswer,
-    };
+    response = await pipeline.invoke({ query, context }, { signal });
   } catch (error: unknown) {
     const duration = performance.now() - start;
-    console.error(`RAG answer generation failed after ${duration.toFixed(0)}ms:`, error);
+    const errorType = error instanceof Error ? error.name : "Error";
+    console.error(`RAG answer generation failed after ${duration.toFixed(0)}ms (${errorType})`);
 
     if (error instanceof TypeError || error instanceof SchemaValidationError) {
       throw error;
     }
 
+    if (
+      error instanceof OutputParserException ||
+      (error instanceof Error && error.name === "OutputParserException") ||
+      error instanceof z.ZodError
+    ) {
+      handleLlmError(error, RagAnswerSchema);
+    }
+
     throw new UpstreamAIError("RAG answer generation failed or timed out", error);
   }
+
+  const duration = performance.now() - start;
+  console.log(`RAG answer generation completed in ${duration.toFixed(0)}ms`);
+
+  const parseResult = RagAnswerSchema.safeParse(response);
+  if (!parseResult.success) {
+    console.error(
+      `RAG answer output failed defensive schema validation (${parseResult.error.issues.length} issues)`,
+    );
+    throw new SchemaValidationError(
+      "Model output failed defensive schema validation",
+      parseResult.error.issues,
+    );
+  }
+
+  const cleanAnswer = removeThinkingTags(parseResult.data.answer);
+
+  return {
+    answer: cleanAnswer,
+  };
 }

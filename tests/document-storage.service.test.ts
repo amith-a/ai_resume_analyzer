@@ -34,6 +34,7 @@ describe("Document Storage Service Unit Tests", () => {
         updated_at: new Date(),
       };
 
+      let clientReleased = false;
       const queryHistory: string[] = [];
 
       const mockClient: pg.PoolClient = {
@@ -72,7 +73,9 @@ describe("Document Storage Service Unit Tests", () => {
 
           return { rows: [], rowCount: 0 } as unknown as pg.QueryResult;
         },
-        release: () => {},
+        release: () => {
+          clientReleased = true;
+        },
       } as unknown as pg.PoolClient;
 
       const mockPool: pg.Pool = {
@@ -109,9 +112,13 @@ describe("Document Storage Service Unit Tests", () => {
       assert.ok(queryHistory[1].includes("INSERT INTO documents"));
       assert.ok(queryHistory[2].includes("INSERT INTO document_chunks"));
       assert.equal(queryHistory[3], "COMMIT;");
+
+      // Verify client release
+      assert.equal(clientReleased, true, "Client must be released back to the pool after commit");
     });
 
     it("2. rolls back transaction if database chunk insertion fails", async () => {
+      let clientReleased = false;
       const queryHistory: string[] = [];
 
       const mockClient: pg.PoolClient = {
@@ -149,7 +156,9 @@ describe("Document Storage Service Unit Tests", () => {
 
           return { rows: [], rowCount: 0 } as unknown as pg.QueryResult;
         },
-        release: () => {},
+        release: () => {
+          clientReleased = true;
+        },
       } as unknown as pg.PoolClient;
 
       const mockPool: pg.Pool = {
@@ -180,6 +189,7 @@ describe("Document Storage Service Unit Tests", () => {
 
       assert.ok(queryHistory.includes("BEGIN;"));
       assert.ok(queryHistory.includes("ROLLBACK;"));
+      assert.equal(clientReleased, true, "Client must be released back to the pool after rollback");
     });
 
     it("3. rejects empty or whitespace-only raw_text with TypeError", async () => {

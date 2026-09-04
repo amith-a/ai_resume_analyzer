@@ -12,7 +12,8 @@ export const JobComparisonRequestSchema = z.object({
   jobDescription: z
     .string({ message: "Job description must be a non-empty string" })
     .trim()
-    .min(1, "Job description must be a non-empty string"),
+    .min(1, "Job description must be a non-empty string")
+    .max(50000, "Job description cannot exceed 50000 characters"),
 });
 
 export type JobComparisonRequestInput = z.infer<typeof JobComparisonRequestSchema>;

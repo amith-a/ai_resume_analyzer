@@ -74,3 +74,14 @@ export class FileUploadError extends Error {
     this.name = "FileUploadError";
   }
 }
+
+/**
+ * Thrown when a request body or uploaded file exceeds the allowed size limit.
+ * HTTP Mapping: 413 Payload Too Large
+ */
+export class PayloadTooLargeError extends Error {
+  constructor(message: string = "Payload exceeds size limit") {
+    super(message);
+    this.name = "PayloadTooLargeError";
+  }
+}

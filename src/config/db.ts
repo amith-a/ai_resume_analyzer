@@ -13,3 +13,7 @@ export const pool = new Pool({
 pool.on("error", (err) => {
   console.error("Unexpected error on idle PostgreSQL client", err);
 });
+
+export async function closePool(): Promise<void> {
+  await pool.end();
+}

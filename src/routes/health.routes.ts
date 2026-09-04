@@ -26,7 +26,8 @@ healthRouter.get("/db", async (_req: Request, res: Response) => {
       pgvector: pgvectorVersion,
     });
   } catch (error: unknown) {
-    console.error("Database health check failed:", error);
+    const errorType = error instanceof Error ? error.name : "Error";
+    console.error(`Database health check failed (${errorType})`);
     res.status(500).json({
       status: "error",
       database: "disconnected",
@@ -51,7 +52,8 @@ healthRouter.get("/ollama", async (_req: Request, res: Response) => {
       model: hasModel ? "available" : "not pulled",
     });
   } catch (error: unknown) {
-    console.error("Ollama health check failed:", error);
+    const errorType = error instanceof Error ? error.name : "Error";
+    console.error(`Ollama health check failed (${errorType})`);
     res.status(500).json({ status: "error", ollama: "unreachable" });
   }
 });

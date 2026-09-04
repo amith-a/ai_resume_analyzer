@@ -12,6 +12,7 @@ import {
 } from "../services/grounded-answer.service.js";
 import { trackSources } from "../services/source-tracker.service.js";
 import { checkGrounding } from "../services/grounding-check.service.js";
+import { FileUploadError } from "../errors/index.js";
 import type { AskResumeParams, AskResumeBody } from "../schemas/ask-resume-request.schema.js";
 import type { AnalyzeResumeRequestInput } from "../schemas/analyze-resume-request.schema.js";
 
@@ -20,7 +21,11 @@ import type { AnalyzeResumeRequestInput } from "../schemas/analyze-resume-reques
  * Note: Express 5 natively catches unhandled async rejections and forwards them to errorHandlerMiddleware.
  */
 export async function extractResumeHandler(req: Request, res: Response): Promise<void> {
-  const doc = await ingestResumeDocument(req.file!.buffer);
+  if (!req.file) {
+    throw new FileUploadError("No resume file provided");
+  }
+
+  const doc = await ingestResumeDocument(req.file.buffer);
 
   const storage = await storeDocumentWithChunks({
     title: req.file!.originalname,
@@ -80,12 +85,15 @@ export async function askResumeHandler(
   res: Response,
 ): Promise<void> {
   const { id } = req.params;
-  const { query } = req.body;
+  const { query, topK, maxDistanceThreshold, metadataFilter } = req.body;
 
   // 1. Retrieve relevant chunks scoped strictly to the requested document ID
   const retrievedChunks = await orchestrateRagRetrieval({
     query,
     documentId: id,
+    topK,
+    maxDistanceThreshold,
+    metadataFilter,
   });
 
   // 2. Apply context budget limits

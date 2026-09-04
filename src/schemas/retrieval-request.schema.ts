@@ -7,7 +7,8 @@ export const RetrieveChunksRequestSchema = z.object({
   query: z
     .string({ message: "Query must be a non-empty string" })
     .trim()
-    .min(1, "Query must be a non-empty string"),
+    .min(1, "Query must be a non-empty string")
+    .max(1000, "Query cannot exceed 1000 characters"),
   documentId: z
     .string({ message: "Document ID must be a non-empty string" })
     .trim()

@@ -1,5 +1,4 @@
 import type { Runnable } from "@langchain/core/runnables";
-import { z } from "zod";
 import { env } from "../config/env.js";
 import { createStructuredOllamaModel } from "../ai/model-factory.js";
 import { jobComparisonPrompt } from "../ai/prompts/job-comparison.prompt.js";
@@ -69,7 +68,10 @@ export async function compareJobDescription(
     );
   } catch (error: unknown) {
     const duration = performance.now() - start;
-    console.error(`Job comparison LLM invocation failed after ${duration.toFixed(0)}ms:`, error);
+    const errorType = error instanceof Error ? error.name : "Error";
+    console.error(
+      `Job comparison LLM invocation failed after ${duration.toFixed(0)}ms (${errorType})`,
+    );
     handleLlmError(error, JobComparisonOutputSchema);
   }
 
@@ -81,8 +83,7 @@ export async function compareJobDescription(
 
   if (!parseResult.success) {
     console.error(
-      "Job comparison output failed defensive schema validation:",
-      z.treeifyError(parseResult.error),
+      `Job comparison output failed defensive schema validation (${parseResult.error.issues.length} issues)`,
     );
     throw new SchemaValidationError(
       "Model output failed defensive schema validation",

@@ -16,5 +16,13 @@ app.use("/jobs", jobComparisonRouter);
 app.use("/search", searchRouter);
 app.use("/retrieval", searchRouter);
 
+// 404 Handler for unmatched routes
+app.use((_req, res) => {
+  res.status(404).json({
+    status: "error",
+    message: "Resource not found",
+  });
+});
+
 // Centralized Error Handling Middleware (must be mounted after all routes)
 app.use(errorHandlerMiddleware);

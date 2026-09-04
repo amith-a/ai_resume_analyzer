@@ -85,7 +85,8 @@ export async function embedText(
     return validated;
   } catch (error: unknown) {
     const duration = performance.now() - start;
-    console.error(`Embedding generation failed after ${duration.toFixed(0)}ms:`, error);
+    const errorType = error instanceof Error ? error.name : "Error";
+    console.error(`Embedding generation failed after ${duration.toFixed(0)}ms (${errorType})`);
 
     if (error instanceof TypeError) {
       throw error;
@@ -149,7 +150,8 @@ export async function embedChunks(
     return validatedVectors;
   } catch (error: unknown) {
     const duration = performance.now() - start;
-    console.error(`Batch embedding failed after ${duration.toFixed(0)}ms:`, error);
+    const errorType = error instanceof Error ? error.name : "Error";
+    console.error(`Batch embedding failed after ${duration.toFixed(0)}ms (${errorType})`);
 
     if (error instanceof TypeError) {
       throw error;

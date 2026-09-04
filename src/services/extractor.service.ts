@@ -45,7 +45,8 @@ export async function extractTextFromDocument(
       throw error;
     }
 
-    console.error("Text extraction parser failed:", error);
+    const errorType = error instanceof Error ? error.name : "Error";
+    console.error(`Text extraction parser failed (${errorType})`);
     throw new DocumentExtractionError(
       "Failed to extract text from document: file may be corrupted, encrypted, or malformed",
       error,

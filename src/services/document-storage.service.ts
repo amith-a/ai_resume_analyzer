@@ -71,8 +71,9 @@ export async function saveDocumentWithChunks(
       chunks: storedChunks,
     };
   } catch (error) {
-    await client.query("ROLLBACK;").catch((rollbackErr) => {
-      console.error("Failed to rollback transaction in saveDocumentWithChunks:", rollbackErr);
+    await client.query("ROLLBACK;").catch((rollbackErr: unknown) => {
+      const errorType = rollbackErr instanceof Error ? rollbackErr.name : "Error";
+      console.error(`Failed to rollback transaction in saveDocumentWithChunks (${errorType})`);
     });
     throw error;
   } finally {
