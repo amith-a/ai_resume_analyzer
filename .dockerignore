@@ -1,7 +1,9 @@
-node_modules
-dist
-.git
-.gitignore
-.env
+node_modules/
+dist/
+coverage/
+tests/
+frontend/
+.local/
+.git/
+.env*
 *.log
-.local

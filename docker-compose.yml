@@ -1,32 +1,26 @@
 services:
   node-api:
-    build: .
+    build:
+      context: .
+      target: production
     container_name: node-api
     ports:
       - "3000:3000"
     env_file:
       - .env
-    command: npm run dev
-    develop:
-      watch:
-        - action: sync
-          path: ./src
-          target: /app/src
-          ignore:
-            - node_modules/
-            - dist/
-            - .git/
-        - action: sync
-          path: ./tests
-          target: /app/tests
-          ignore:
-            - node_modules/
-            - dist/
-            - .git/
-        - action: rebuild
-          path: ./package.json
-        - action: rebuild
-          path: ./package-lock.json
+    environment:
+      - NODE_ENV=production
+    stop_grace_period: 10s
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e ''fetch("http://127.0.0.1:3000/health").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))''',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
       postgres:
         condition: service_healthy
