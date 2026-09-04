@@ -1,0 +1,28 @@
+services:
+  node-api:
+    build:
+      context: .
+      target: development
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore:
+            - node_modules/
+            - dist/
+            - .git/
+        - action: sync
+          path: ./tests
+          target: /app/tests
+          ignore:
+            - node_modules/
+            - dist/
+            - .git/
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./package-lock.json
