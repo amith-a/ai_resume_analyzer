@@ -137,16 +137,7 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      <footer
-        style={{
-          marginTop: "4rem",
-          paddingTop: "1.5rem",
-          borderTop: "1px solid var(--border-subtle)",
-          textAlign: "center",
-          fontSize: "0.8rem",
-          color: "var(--text-muted)",
-        }}
-      >
+      <footer className="app-footer">
         <p>AI Resume Analyzer • Node.js • LangChain • Ollama Qwen • PostgreSQL + pgvector</p>
       </footer>
     </div>

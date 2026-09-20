@@ -101,13 +101,11 @@ export const JobComparisonView: React.FC<JobComparisonViewProps> = ({ documentId
 
         <form onSubmit={handleCompare}>
           <div className="form-group">
-            <div
-              style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.4rem" }}
-            >
+            <div className="form-header-row">
               <label className="form-label" htmlFor="job-description">
                 Job Description
               </label>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div className="sample-buttons-row">
                 {SAMPLE_JOB_DESCRIPTIONS.map((preset, idx) => (
                   <button
                     key={idx}
@@ -155,15 +153,7 @@ export const JobComparisonView: React.FC<JobComparisonViewProps> = ({ documentId
       {comparison && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           {/* Fit Assessment Banner */}
-          <div
-            className="card"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              background: "linear-gradient(90deg, rgba(17, 23, 38, 0.9), rgba(26, 34, 56, 0.8))",
-            }}
-          >
+          <div className="card fit-banner">
             <div>
               <h3 style={{ color: "#fff", fontSize: "1.1rem", marginBottom: "0.2rem" }}>
                 Overall Candidate Fit

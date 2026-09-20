@@ -103,7 +103,7 @@ export const SemanticSearchView: React.FC<SemanticSearchViewProps> = ({ activeDo
             <label className="form-label" htmlFor="vector-query">
               Semantic Search Query
             </label>
-            <div style={{ display: "flex", gap: "0.75rem" }}>
+            <div className="search-input-group">
               <input
                 id="vector-query"
                 type="text"
@@ -125,18 +125,8 @@ export const SemanticSearchView: React.FC<SemanticSearchViewProps> = ({ activeDo
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: "1.5rem",
-              fontSize: "0.85rem",
-              color: "var(--text-secondary)",
-              paddingTop: "0.5rem",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div className="search-controls-row">
+            <div className="search-control-item">
               <span>Max Distance:</span>
               <select
                 className="form-input"
@@ -152,7 +142,7 @@ export const SemanticSearchView: React.FC<SemanticSearchViewProps> = ({ activeDo
               </select>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div className="search-control-item">
               <span>Top-K Results:</span>
               <select
                 className="form-input"
@@ -197,14 +187,7 @@ export const SemanticSearchView: React.FC<SemanticSearchViewProps> = ({ activeDo
                       borderLeft: "3px solid var(--accent-cyan)",
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
+                    <div className="chunk-header">
                       <span className="source-badge">
                         Chunk #{chunk.chunk_index} (Doc: {chunk.document_id.slice(0, 8)}...)
                       </span>

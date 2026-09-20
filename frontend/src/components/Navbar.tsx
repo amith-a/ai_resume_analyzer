@@ -43,17 +43,11 @@ export const Navbar: React.FC<NavbarProps> = ({
       {activeResume && (
         <div className="active-resume-bar">
           <div className="active-resume-meta">
-            <CheckCircle2 size={20} color="var(--accent-emerald)" />
-            <div>
+            <CheckCircle2 size={20} color="var(--accent-emerald)" style={{ flexShrink: 0 }} />
+            <div className="active-resume-info">
               <span className="active-resume-name">{activeResume.filename}</span>
               {chunkCount !== null && (
-                <span
-                  style={{
-                    marginLeft: "0.75rem",
-                    fontSize: "0.8rem",
-                    color: "var(--accent-cyan)",
-                  }}
-                >
+                <span className="active-resume-chunks">
                   {chunkCount} chunks indexed
                 </span>
               )}

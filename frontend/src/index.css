@@ -117,6 +117,7 @@ body {
   letter-spacing: -0.02em;
   background: linear-gradient(to right, #ffffff, var(--text-secondary));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -182,9 +183,22 @@ body {
   gap: 0.75rem;
 }
 
+.active-resume-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .active-resume-name {
   font-weight: 600;
   color: #fff;
+  word-break: break-word;
+}
+
+.active-resume-chunks {
+  font-size: 0.8rem;
+  color: var(--accent-cyan);
 }
 
 .active-resume-id {
@@ -206,6 +220,18 @@ body {
   border: 1px solid var(--border-subtle);
   margin-bottom: 2rem;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+}
+
+.tabs-header::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabs-header::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 4px;
 }
 
 .tab-btn {
@@ -223,6 +249,7 @@ body {
   cursor: pointer;
   transition: all var(--transition-fast);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tab-btn:hover:not(:disabled) {
@@ -545,6 +572,8 @@ body {
   font-size: 0.9rem;
   max-width: 85%;
   line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .chat-bubble.user {
@@ -608,4 +637,255 @@ body {
 
 .pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Responsive Helper Classes */
+.form-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.sample-buttons-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, rgba(17, 23, 38, 0.9), rgba(26, 34, 56, 0.8));
+  gap: 1rem;
+}
+
+.chat-card {
+  display: flex;
+  flex-direction: column;
+  height: 680px;
+  max-height: calc(100dvh - 180px);
+  min-height: 440px;
+}
+
+.chat-input-form {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.search-input-group {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.search-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding-top: 0.5rem;
+}
+
+.search-control-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chunk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.app-footer {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 0 1rem 2.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-container {
+    padding: 0 0.75rem 2rem;
+  }
+
+  .navbar {
+    padding: 0.875rem 0;
+    margin-bottom: 1.25rem;
+    gap: 0.5rem;
+  }
+
+  .brand {
+    gap: 0.5rem;
+  }
+
+  .brand-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  .brand-title {
+    font-size: 1.05rem;
+  }
+
+  .brand-badge {
+    display: none;
+  }
+
+  .health-status {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .active-resume-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .active-resume-bar .btn {
+    width: 100%;
+  }
+
+  .active-resume-meta {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .active-resume-id {
+    display: none;
+  }
+
+  .tabs-header {
+    margin-bottom: 1.25rem;
+    padding: 0.25rem;
+    gap: 0.35rem;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    gap: 0.35rem;
+  }
+
+  .card {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+    flex-wrap: wrap;
+  }
+
+  .card-desc {
+    font-size: 0.825rem;
+    margin-bottom: 1rem;
+  }
+
+  .dropzone {
+    padding: 2rem 1rem;
+  }
+
+  .dropzone-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0.75rem;
+  }
+
+  .form-input,
+  .form-textarea {
+    font-size: 16px; /* Prevents auto-zoom in iOS Safari */
+    padding: 0.65rem 0.85rem;
+  }
+
+  .form-textarea {
+    min-height: 110px;
+  }
+
+  .fit-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .timeline {
+    padding-left: 1.1rem;
+    gap: 1.25rem;
+  }
+
+  .timeline-dot {
+    left: calc(-1.1rem - 5px);
+  }
+
+  .chat-card {
+    height: calc(100dvh - 140px);
+    min-height: 380px;
+    padding: 1rem 0.875rem;
+  }
+
+  .chat-bubble {
+    max-width: 92%;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.85rem;
+  }
+
+  .search-input-group {
+    flex-direction: column;
+  }
+
+  .search-input-group .btn {
+    width: 100%;
+  }
+
+  .search-controls-row {
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .app-footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .chat-input-form {
+    gap: 0.5rem;
+  }
+
+  .chat-input-form .btn {
+    padding: 0 1rem;
+  }
+
+  .brand-title {
+    font-size: 0.95rem;
+  }
 }

@@ -75,7 +75,7 @@ export const RagChatView: React.FC<RagChatViewProps> = ({ documentId }) => {
   };
 
   return (
-    <div className="card" style={{ display: "flex", flexDirection: "column", height: "700px" }}>
+    <div className="card chat-card">
       <div style={{ marginBottom: "1rem" }}>
         <h2 className="card-title">
           <MessageSquare size={20} color="var(--primary)" />
@@ -178,7 +178,7 @@ export const RagChatView: React.FC<RagChatViewProps> = ({ documentId }) => {
           e.preventDefault();
           handleSend();
         }}
-        style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}
+        className="chat-input-form"
       >
         <input
           type="text"
