@@ -70,18 +70,35 @@ export async function uploadResume(file: File): Promise<UploadResumeData> {
   return body.data;
 }
 
+const inFlightAnalysis = new Map<string, Promise<ResumeAnalysis>>();
+
 /**
  * Trigger structured AI analysis for an ingested resume document.
+ * Deduplicates concurrent in-flight requests for the same documentId.
  */
 export async function analyzeResume(documentId: string): Promise<ResumeAnalysis> {
-  const response = await fetch("/resumes/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ documentId }),
-  });
+  const existing = inFlightAnalysis.get(documentId);
+  if (existing) {
+    return existing;
+  }
 
-  const body = await handleResponse<AnalyzeResumeResponse>(response);
-  return body.data;
+  const analysisPromise = (async () => {
+    try {
+      const response = await fetch("/resumes/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId }),
+      });
+
+      const body = await handleResponse<AnalyzeResumeResponse>(response);
+      return body.data;
+    } finally {
+      inFlightAnalysis.delete(documentId);
+    }
+  })();
+
+  inFlightAnalysis.set(documentId, analysisPromise);
+  return analysisPromise;
 }
 
 /**

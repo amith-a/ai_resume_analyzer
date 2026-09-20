@@ -1,5 +1,16 @@
-import React, { useState } from "react";
-import { MessageSquare, Send, Sparkles, AlertCircle, Loader2, Database } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  MessageSquare,
+  Send,
+  Sparkles,
+  AlertCircle,
+  Loader2,
+  Database,
+  User,
+  Bot,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { askResumeQuestion, ApiError } from "../services/api.client.js";
 import type { RagSource } from "../types/api.types.js";
 
@@ -16,10 +27,10 @@ interface ChatMessage {
 }
 
 const EXAMPLE_QUESTIONS = [
-  "What are this candidate's strongest technical skills?",
-  "How many years of backend development experience are documented?",
-  "Does the candidate have experience with PostgreSQL or databases?",
-  "What degrees and educational institutions are mentioned?",
+  "What are this candidate's strongest skills?",
+  "How many years of backend experience?",
+  "Does the candidate know PostgreSQL or databases?",
+  "What degrees and institutions are listed?",
 ];
 
 export const RagChatView: React.FC<RagChatViewProps> = ({ documentId }) => {
@@ -34,6 +45,21 @@ export const RagChatView: React.FC<RagChatViewProps> = ({ documentId }) => {
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [expandedSourceId, setExpandedSourceId] = useState<string | null>(null);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
+
+  const toggleSource = (sourceKey: string) => {
+    setExpandedSourceId((prev) => (prev === sourceKey ? null : sourceKey));
+  };
 
   const handleSend = async (queryToSend?: string) => {
     const query = (queryToSend || question).trim();
@@ -76,100 +102,137 @@ export const RagChatView: React.FC<RagChatViewProps> = ({ documentId }) => {
 
   return (
     <div className="card chat-card">
-      <div style={{ marginBottom: "1rem" }}>
-        <h2 className="card-title">
-          <MessageSquare size={20} color="var(--primary)" />
-          Grounded Resume Q&A (RAG)
-        </h2>
-        <p className="card-desc" style={{ marginBottom: "0.5rem" }}>
-          Inquire about specific details in the candidate's background. Answers cite pgvector source
-          chunks and will indicate if information is not found in the resume.
+      <div className="chat-header">
+        <div className="chat-header-title">
+          <h2 className="card-title" style={{ margin: 0 }}>
+            <MessageSquare size={19} color="var(--primary)" />
+            Grounded Resume Q&A (RAG)
+          </h2>
+          <span className="badge" style={{ background: "rgba(99, 102, 241, 0.15)", color: "#a5b4fc", fontSize: "0.7rem" }}>
+            pgvector
+          </span>
+        </div>
+        <p className="card-desc" style={{ marginTop: "0.4rem", marginBottom: "0.25rem" }}>
+          Inquire about specific details. Answers cite pgvector source chunks and decline if not found.
         </p>
 
-        {/* Quick prompt suggestions */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginTop: "0.5rem" }}>
+        {/* Quick prompt suggestions - Horizontal scroll on mobile */}
+        <div className="chat-suggestions-tray">
           {EXAMPLE_QUESTIONS.map((q, idx) => (
             <button
               key={idx}
               type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: "0.75rem", padding: "0.25rem 0.6rem" }}
+              className="suggestion-chip"
               disabled={isLoading}
               onClick={() => handleSend(q)}
             >
-              <Sparkles size={12} color="var(--accent-cyan)" />
-              {q}
+              <Sparkles size={11} color="var(--accent-cyan)" />
+              <span>{q}</span>
             </button>
           ))}
         </div>
       </div>
 
       {errorMessage && (
-        <div className="alert alert-error" style={{ marginBottom: "1rem" }}>
+        <div className="alert alert-error" style={{ marginBottom: "0.75rem" }}>
           <AlertCircle size={18} style={{ flexShrink: 0 }} />
           <span>{errorMessage}</span>
         </div>
       )}
 
       {/* Message history container */}
-      <div className="chat-messages" style={{ flex: 1 }}>
+      <div className="chat-messages">
         {messages.map((msg) => (
-          <div key={msg.id} className={`chat-bubble ${msg.sender}`}>
-            <p>{msg.text}</p>
-
-            {msg.sources && msg.sources.length > 0 && (
-              <div className="source-citation">
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.35rem",
-                    color: "var(--text-muted)",
-                    marginBottom: "0.4rem",
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  <Database size={13} />
-                  Cited Evidence Chunks:
-                </div>
-                <div>
-                  {msg.sources.map((s, idx) => (
-                    <span
-                      key={idx}
-                      className="source-badge"
-                      title={s.content.slice(0, 200) + "..."}
-                    >
-                      Chunk #{s.chunkIndex} (Doc: {s.documentId.slice(0, 8)}...)
-                    </span>
-                  ))}
-                </div>
+          <div key={msg.id} className={`chat-message-row ${msg.sender}`}>
+            {msg.sender === "assistant" && (
+              <div className="chat-avatar assistant">
+                <Bot size={16} />
               </div>
             )}
 
-            <div
-              style={{
-                fontSize: "0.7rem",
-                color: msg.sender === "user" ? "rgba(255,255,255,0.7)" : "var(--text-muted)",
-                textAlign: "right",
-                marginTop: "0.4rem",
-              }}
-            >
-              {msg.timestamp}
+            <div className={`chat-bubble ${msg.sender}`}>
+              <p>{msg.text}</p>
+
+              {msg.sources && msg.sources.length > 0 && (
+                <div className="source-citation">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                      color: "var(--text-muted)",
+                      marginBottom: "0.4rem",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    <Database size={12} />
+                    <span>Cited Evidence Chunks:</span>
+                  </div>
+                  <div>
+                    {msg.sources.map((s, idx) => {
+                      const sourceKey = `${msg.id}-${idx}`;
+                      const isExpanded = expandedSourceId === sourceKey;
+                      return (
+                        <div key={idx} style={{ marginBottom: "0.25rem" }}>
+                          <button
+                            type="button"
+                            className="source-badge"
+                            onClick={() => toggleSource(sourceKey)}
+                            title="Tap to preview cited chunk"
+                          >
+                            <span>Chunk #{s.chunkIndex}</span>
+                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          </button>
+                          {isExpanded && (
+                            <div className="source-excerpt">
+                              "{s.content}"
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div
+                style={{
+                  fontSize: "0.68rem",
+                  color: msg.sender === "user" ? "rgba(255,255,255,0.7)" : "var(--text-muted)",
+                  textAlign: "right",
+                  marginTop: "0.35rem",
+                }}
+              >
+                {msg.timestamp}
+              </div>
             </div>
+
+            {msg.sender === "user" && (
+              <div className="chat-avatar user">
+                <User size={15} />
+              </div>
+            )}
           </div>
         ))}
 
         {isLoading && (
-          <div
-            className="chat-bubble assistant"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-          >
-            <Loader2 size={16} className="spinner" color="var(--primary)" />
-            <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-              Retrieving context & synthesizing grounded answer...
-            </span>
+          <div className="chat-message-row assistant">
+            <div className="chat-avatar assistant">
+              <Bot size={16} />
+            </div>
+            <div
+              className="chat-bubble assistant"
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <Loader2 size={16} className="spinner" color="var(--primary)" />
+              <span style={{ fontSize: "0.825rem", color: "var(--text-secondary)" }}>
+                Retrieving chunks & synthesizing answer...
+              </span>
+            </div>
           </div>
         )}
+
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input box */}
@@ -192,9 +255,9 @@ export const RagChatView: React.FC<RagChatViewProps> = ({ documentId }) => {
           type="submit"
           className="btn btn-primary"
           disabled={isLoading || !question.trim()}
-          style={{ padding: "0 1.25rem" }}
+          title="Send Question"
         >
-          <Send size={18} />
+          <Send size={17} />
         </button>
       </form>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BrainCircuit,
   Briefcase,
@@ -27,15 +27,18 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
   const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(initialAnalysis || null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const fetchedDocIdRef = useRef<string | null>(null);
 
   const fetchAnalysis = async () => {
     setIsLoading(true);
     setErrorMessage(null);
+    fetchedDocIdRef.current = documentId;
     try {
       const data = await analyzeResume(documentId);
       setAnalysis(data);
       onAnalysisLoaded(data);
     } catch (err: unknown) {
+      fetchedDocIdRef.current = null;
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
       } else if (err instanceof Error) {
@@ -49,10 +52,16 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
   };
 
   useEffect(() => {
-    if (!analysis && !isLoading && !errorMessage) {
+    if (initialAnalysis) {
+      setAnalysis(initialAnalysis);
+      fetchedDocIdRef.current = documentId;
+      return;
+    }
+
+    if (!analysis && !isLoading && !errorMessage && fetchedDocIdRef.current !== documentId) {
       fetchAnalysis();
     }
-  }, [documentId]);
+  }, [documentId, initialAnalysis]);
 
   if (isLoading) {
     return (
